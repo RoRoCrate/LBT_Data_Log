@@ -513,6 +513,35 @@
     for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
     return (h>>>0).toString(16).padStart(8,"0");
   }
+  async function compressToBase64Url(str) {
+    if(typeof CompressionStream==="undefined") throw new Error("このブラウザは共有リンクの圧縮に対応していません。最新のChromeまたはEdgeを使用してください。");
+    const stream=new Blob([new TextEncoder().encode(str)]).stream().pipeThrough(new CompressionStream("deflate"));
+    const bytes=new Uint8Array(await new Response(stream).arrayBuffer());
+    let binary="";
+    for(let i=0;i<bytes.length;i+=0x8000) binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+    return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  async function decompressFromBase64Url(str) {
+    if(typeof DecompressionStream==="undefined") throw new Error("このブラウザは圧縮された共有リンクの展開に対応していません。最新のChromeまたはEdgeを使用してください。");
+    const base=str.replace(/-/g,"+").replace(/_/g,"/");
+    const padded=base+"=".repeat((4-base.length%4)%4);
+    const binary=atob(padded), bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+    return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+  }
+  async function makeCompressedShareCode(payload) {
+    const body=JSON.stringify(payload);
+    return `TRPGVIEW2.${checksum(body)}.${await compressToBase64Url(body)}`;
+  }
+  async function decodeShareCode(code) {
+    const parts=String(code).trim().split(".");
+    if(parts.length!==3) throw new Error("コード形式が正しくありません。");
+    if(parts[0]==="TRPGVIEW1") return decodeCode(code,"TRPGVIEW1");
+    if(parts[0]!=="TRPGVIEW2") throw new Error("コード形式が正しくありません。");
+    const body=await decompressFromBase64Url(parts[2]);
+    if(checksum(body)!==parts[1]) throw new Error("共有データの検査に失敗しました。リンクが欠けている可能性があります。");
+    return JSON.parse(body);
+  }
   function makeCode(payload, prefix="TRPG1") {
     const body=JSON.stringify(payload);
     return `${prefix}.${checksum(body)}.${utf8ToBase64Url(body)}`;
@@ -549,9 +578,9 @@
       save();toast("データを復元しました");
     } catch(e) { alert(`復元できませんでした。\n${e.message}`); }
   }
-  function generateShareLink(a) {
+  async function generateShareLink(a) {
     const payload={kind:"analysis-preview",version:1,name:a.name,rank:a.rank||"ZAYIN",assignedBy:a.assignedBy||"",requiredResources:a.requiredResources||"",note:a.note||"",uniques:a.uniques||[],passiveName:a.passiveName||"",condition:a.condition||"",constantEffect:a.showConstantEffect?(a.constantEffect||""):"",effect:a.effect||"",corrosionEffect:a.corrosionEffect||"",awakeningEffect:a.awakeningEffect||"",unique:a.unique||""};
-    const code=makeCode(payload,"TRPGVIEW1");
+    const code=await makeCompressedShareCode(payload);
     const url=new URL(window.location.href);
     url.hash=`preview=${encodeURIComponent(code)}`;
     openForm("同期解析の共有リンク",[
@@ -560,18 +589,18 @@
     // Make the URL field easier to copy even if the user closes without submitting.
     setTimeout(()=>{const input=$("#f_shareUrl");if(input){input.readOnly=true;input.addEventListener("focus",()=>input.select());}},0);
   }
-  function generateSyncShareLink(s) {
+  async function generateSyncShareLink(s) {
     const payload={kind:"sync-preview",version:1,name:s.name||"名称未設定",rank:s.rank||"0",affiliation:s.affiliation||"",assignedBy:s.assignedBy||"",hp:s.hp||"",san:s.san||"",speed:s.speed||"",bullets:s.bullets||"",slashResistance:s.slashResistance||"",pierceResistance:s.pierceResistance||"",bluntResistance:s.bluntResistance||"",passive1Name:s.passive1Name||s.passive1||"",passive1Condition:s.passive1Condition||"",passive1ConstantEffect:s.showPassive1Constant?(s.passive1ConstantEffect||""):"",passive1Effect:s.passive1Effect||"",showPassive2:!!s.showPassive2,passive2Name:s.passive2Name||s.passive2||"",passive2Condition:s.passive2Condition||"",passive2ConstantEffect:s.showPassive2Constant?(s.passive2ConstantEffect||""):"",passive2Effect:s.passive2Effect||"",tactics:(s.tactics||[]).map(t=>({name:t.name||"",effect:t.effect||"",parentId:t.parentId||"",id:t.id||""})),uniques:s.uniques||[],note:s.note||""};
-    const code=makeCode(payload,"TRPGVIEW1");
+    const code=await makeCompressedShareCode(payload);
     const url=new URL(window.location.href); url.hash=`preview=${encodeURIComponent(code)}`;
     openForm("同期人格の共有リンク",[{name:"shareUrl",label:"共有リンク（コピーしてPLに送信）",value:url.toString(),required:true,help:"同期人格の性能情報を含みます。リンクを受け取った人は閲覧できます。"}],v=>copyText(v.shareUrl));
     setTimeout(()=>{const input=$("#f_shareUrl");if(input){input.readOnly=true;input.addEventListener("focus",()=>input.select());}},0);
   }
-  function renderPreviewIfNeeded() {
+  async function renderPreviewIfNeeded() {
     const match=location.hash.match(/(?:^#|&)preview=([^&]+)/);
     if(!match) return false;
     try {
-      const payload=decodeCode(decodeURIComponent(match[1]),"TRPGVIEW1");
+      const payload=await decodeShareCode(decodeURIComponent(match[1]));
       if(payload.version!==1 || !["analysis-preview","sync-preview"].includes(payload.kind)) throw new Error("共有データの形式が正しくありません。");
       if(payload.kind==="sync-preview") {
         const showPassive=(n)=>{const name=payload[`passive${n}Name`],condition=payload[`passive${n}Condition`],constant=payload[`passive${n}ConstantEffect`],effect=payload[`passive${n}Effect`];if(n===2&&!payload.showPassive2)return "";if(![name,condition,constant,effect].some(x=>String(x||"").trim()))return "";return `<section class="subpanel"><h3>サポートパッシブ${n}：${escapeHTML(name||"名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(condition||"—").replace(/\n/g,"<br>")}</p>${constant?`<p><strong>常時効果：</strong>${escapeHTML(constant).replace(/\n/g,"<br>")}</p>`:""}<p><strong>効果：</strong>${escapeHTML(effect||"—").replace(/\n/g,"<br>")}</p></section>`;};
@@ -609,5 +638,5 @@
   $("#addCharacterBtn").addEventListener("click",()=>openForm("キャラクターを追加",[{name:"name",label:"キャラクター名",required:true}],v=>{const c=emptyCharacter((v.name||"").trim() || "名称未設定");state.characters.push(c);state.activeCharacterId=c.id;save();toast("キャラクターを追加しました");}));
   $$(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.view)));
 
-  if (!renderPreviewIfNeeded()) renderAll();
+  renderPreviewIfNeeded().then(isPreview=>{if(!isPreview) renderAll();}).catch(e=>{document.body.innerHTML=`<main class="preview-page"><h1>共有リンクを読み込めません</h1><p>${escapeHTML(e.message)}</p></main>`;});
 })();
