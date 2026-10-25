@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#17191b" id="metaThemeColor">
+  <meta name="description" content="LBT囚人のシナリオ記録、資産、人格、E.G.Oを管理する記録管理室です。" id="metaDescription">
+  <meta name="keywords" content="LBT,キャラクター管理,シナリオ記録,人格,E.G.O" id="metaKeywords">
+  <meta name="author" content="" id="metaAuthor">
+  <meta name="robots" content="index,follow" id="metaRobots">
+  <meta property="og:type" content="website" id="metaOgType">
+  <meta property="og:title" content="LBT記録管理室 | LBT囚人管理" id="metaOgTitle">
+  <meta property="og:description" content="LBT囚人のシナリオ記録、資産、人格、E.G.Oを管理する記録管理室です。" id="metaOgDescription">
+  <meta property="og:image" content="images/naname-r.png" id="metaOgImage">
+  <meta name="twitter:card" content="summary" id="metaTwitterCard">
+  <title id="pageTitle">LBT記録管理室 | TRPGキャラクター管理</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16.png">
+  <link rel="apple-touch-icon" href="images/favicon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="button button-quiet menu-toggle" id="menuToggle" type="button" aria-expanded="true" aria-controls="archiveSidebar">☰ ARCHIVE MENU</button>
+      <div class="brand">
+        <div class="brand-mark"><img src="images/naname-r.png" alt="ナナメのR"></div>
+        <div>
+          <p class="eyebrow">PERSONAL RECORD ARCHIVE</p>
+          <h1>LBT記録管理室</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <label class="character-switcher">管理対象
+          <select id="characterSelect" aria-label="管理するキャラクター"></select>
+        </label>
+        <button class="button button-quiet" id="addCharacterBtn">＋ キャラクター</button>
+      </div>
+    </header>
+
+    <section class="status-strip" aria-label="現在の資産">
+      <div class="status-card"><span>LP</span><strong id="summaryLP">0</strong><small>所持資産</small></div>
+      <div class="status-card"><span>欠片</span><strong id="summaryFragment">0</strong><small>所持資産</small></div>
+    </section>
+
+    <div class="layout">
+      <aside class="sidebar" id="archiveSidebar">
+        <p class="nav-heading">ARCHIVE MENU</p>
+        <button class="nav-item active" data-view="overview"><span>⌂</span> 受付 <small>OVERVIEW</small></button>
+        <button class="nav-item" data-view="scenarios"><span>▤</span> シナリオ記録 <small>SCENARIO LOG</small></button>
+        <button class="nav-item" data-view="assets"><span>◈</span> 資産・アイテム <small>RESOURCES</small></button>
+        <button class="nav-item" data-view="sync"><span>⟡</span> 同期人格 <small>SYNCHRONIZED IDENTITY</small></button>
+        <button class="nav-item" data-view="analysis"><span>⌘</span> 解析E.G.O <small>ANALYSIS E.G.O</small></button>
+        <button class="nav-item" data-view="identities"><span>▣</span> 人格 <small>IDENTITIES</small></button>
+        <button class="nav-item" data-view="egos"><span>✦</span> E.G.O <small>E.G.O RANKS</small></button>
+        <button class="nav-item" data-view="passives"><span>◇</span> サポートパッシブ <small>PASSIVES</small></button>
+        <button class="nav-item" data-view="spirits"><span>◌</span> 精神 <small>SPIRITS</small></button>
+        <div class="sidebar-bottom">
+          <button class="nav-item" data-view="data"><span>⇄</span> データ管理 <small>TRANSFER / BACKUP</small></button>
+          <p class="local-note"><span class="status-dot"></span> この端末に保存中</p>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="page-heading">
+          <div><p class="eyebrow" id="viewEyebrow">WELCOME BACK</p><h2 id="viewTitle">受付</h2></div>
+          <div class="page-heading-meta" id="activeCharacterLabel"></div>
+        </div>
+        <div id="viewContent"></div>
+        <footer class="footer-note">LOCAL ARCHIVE SYSTEM <span>·</span> 制作：正岡死期(@roro_crate)<span>·</span>注意：このサイトは個人製作です。LBT公式とは一切関係がありません</footer>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="genericDialog">
+    <form method="dialog" id="dialogForm">
+      <div class="dialog-head"><p class="eyebrow">RECORD INPUT</p><button class="icon-button" value="cancel" aria-label="閉じる">×</button></div>
+      <h3 id="dialogTitle">記録を追加</h3>
+      <div id="dialogFields"></div>
+      <div class="dialog-actions"><button class="button button-quiet" value="cancel">キャンセル</button><button class="button button-primary" id="dialogSave" value="save">保存する</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <form method="dialog">
+      <div class="dialog-head"><p class="eyebrow">CONFIRMATION</p><button class="icon-button" value="cancel" aria-label="閉じる">×</button></div>
+      <h3 id="confirmTitle">確認</h3><p id="confirmMessage" class="muted"></p>
+      <div class="dialog-actions"><button class="button button-quiet" value="cancel">キャンセル</button><button class="button button-danger" id="confirmYes" value="yes">実行する</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
