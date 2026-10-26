@@ -613,6 +613,7 @@
       body: JSON.stringify(payload)
     });
     const result = await response.json().catch(() => ({}));
+    console.log("共有APIレスポンス:", response.status, result);
     if (!response.ok || !result.id) throw new Error(result.error || "共有データを保存できませんでした。");
     return result.id;
   }
