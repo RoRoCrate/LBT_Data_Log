@@ -297,6 +297,42 @@ dialog h3 { margin: 6px 0 20px; font-size: 20px; }
 }
 
 
+/* ========================================
+   一覧の高さ制限・内部スクロール
+======================================== */
+
+/* 一覧を囲む領域 */
+.list-container,
+.list-wrapper,
+.record-list-container {
+  max-height: 65vh;
+  overflow-y: auto;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+/* 一覧の項目が縦に伸びすぎないようにする */
+.record-list,
+.list-items {
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+/* スマートフォン */
+@media screen and (max-width: 768px) {
+  .list-container,
+  .list-wrapper,
+  .record-list-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+
+
 /* Custom ナナメのR brand image */
 .brand-mark { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: 0; color: inherit; font-size: 0; transform: none; overflow: hidden; }
 .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
