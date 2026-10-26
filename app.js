@@ -605,13 +605,21 @@
     }
     return SHARE_API_BASE.replace(/\/$/, "");
   }
-  async function createExternalShare(payload) {
+
+async function createExternalShare(payload, existing = null) {
   const base = getShareApiBase();
+
+  const requestData = { payload };
+
+  if (existing) {
+    requestData.id = existing.id;
+    requestData.editToken = existing.editToken;
+  }
 
   const response = await fetch(`${base}/api/share`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ payload })
+    body: JSON.stringify(requestData)
   });
 
   const body = await response.text();
@@ -628,8 +636,24 @@
     );
   }
 
-  return result.id;
+  // 新規作成時は、更新に必要な情報も返す
+  if (!existing) {
+    if (!result.editToken) {
+      throw new Error("更新用トークンを取得できませんでした。");
+    }
+
+    return {
+      id: result.id,
+      editToken: result.editToken
+    };
+  }
+
+  return {
+    id: result.id,
+    editToken: existing.editToken
+  };
 }
+
   async function fetchExternalShare(id) {
     const base = getShareApiBase();
     const response = await fetch(`${base}/api/share/${encodeURIComponent(id)}`);
@@ -638,19 +662,54 @@
     if (!response.ok || !result.payload) throw new Error(result.error || "共有データを取得できませんでした。");
     return result.payload;
   }
-  async function showExternalShareLink(title, payload, help) {
-    try {
-      const id = await createExternalShare(payload);
-      const url = new URL(window.location.href);
-      url.hash = `s=${encodeURIComponent(id)}`;
-      openForm(title, [
-        {name:"shareUrl",label:"共有リンク",value:url.toString(),required:true,help:`${help}  `}
-      ], v => copyText(v.shareUrl));
-      setTimeout(() => { const input=$("#f_shareUrl"); if(input){input.readOnly=true;input.addEventListener("focus",()=>input.select());} }, 0);
-    } catch (e) {
-      alert(`共有リンクを作成できませんでした。\n${e.message}`);
-    }
+  
+async function showExternalShareLink(title, payload, help) {
+  try {
+    const storageKey = `shareEdit:${payload.kind}:${payload.name}`;
+    const saved = localStorage.getItem(storageKey);
+    const existing = saved ? JSON.parse(saved) : null;
+
+    const action = existing
+      ? confirm(
+          "この記録の共有リンクは既にあります。\n\n" +
+          "「OK」：既存リンクを更新\n" +
+          "「キャンセル」：新しいリンクを作成"
+        )
+      : false;
+
+    const result = await createExternalShare(
+      payload,
+      action ? existing : null
+    );
+
+    // 新規作成・更新後のIDと編集用トークンを保存
+    localStorage.setItem(storageKey, JSON.stringify(result));
+
+    const url = new URL(window.location.href);
+    url.hash = `s=${encodeURIComponent(result.id)}`;
+
+    openForm(title, [
+      {
+        name: "shareUrl",
+        label: "共有リンク",
+        value: url.toString(),
+        required: true,
+        help: `${help} 同じブラウザから次回更新できます。`
+      }
+    ], v => copyText(v.shareUrl));
+
+    setTimeout(() => {
+      const input = $("#f_shareUrl");
+      if (input) {
+        input.readOnly = true;
+        input.addEventListener("focus", () => input.select());
+      }
+    }, 0);
+  } catch (e) {
+    alert(`共有リンクを作成・更新できませんでした。\n${e.message}`);
   }
+}
+
   async function generateShareLink(a) {
     const payload={kind:"analysis-preview",version:1,name:a.name,rank:a.rank||"ZAYIN",assignedBy:a.assignedBy||"",requiredResources:a.requiredResources||"",note:a.note||"",uniques:a.uniques||[],passiveName:a.passiveName||"",condition:a.condition||"",constantEffect:a.showConstantEffect?(a.constantEffect||""):"",effect:a.effect||"",corrosionEffect:a.corrosionEffect||"",awakeningEffect:a.awakeningEffect||"",unique:a.unique||""};
     await showExternalShareLink("解析E.G.Oの共有リンク", payload, "解析E.G.Oの記録内容を含みます。リンクを受け取った人は閲覧できます。");
@@ -705,4 +764,5 @@
   $$(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.view)));
 
   renderPreviewIfNeeded().then(isPreview=>{if(!isPreview) renderAll();}).catch(e=>{document.body.innerHTML=`<main class="preview-page"><h1>共有リンクを読み込めません</h1><p>${escapeHTML(e.message)}</p></main>`;});
+
 })();
