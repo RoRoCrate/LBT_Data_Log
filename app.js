@@ -721,17 +721,24 @@ async function showExternalShareLink(title, payload, help) {
     await showExternalShareLink("同期人格の共有リンク", payload, "同期人格の性能情報を含みます。リンクを受け取った人は閲覧できます。");
   }
 async function renderPreviewIfNeeded() {
-  const queryShare = new URLSearchParams(location.search).get("share");
-  const queryMatch = queryShare && /^[A-Za-z0-9_-]{12}$/.test(queryShare)
-    ? queryShare
-    : null;
+  const queryMatch = new URLSearchParams(location.search).get("share");
 
-  const externalMatch = location.hash.match(/(?:^#|&)s=([A-Za-z0-9_-]{12})/);
-  const legacyMatch = location.hash.match(/(?:^#|&)preview=([^&]+)/);
+const externalMatch = location.hash.match(
+  /(?:^#|&)s=([A-Za-z0-9_-]{12})/
+);
 
-  const shareId = externalMatch?.[1] || queryMatch;
+const legacyMatch = location.hash.match(
+  /(?:^#|&)preview=([^&]+)/
+);
 
-  if (!shareId && !legacyMatch) return false;
+const shareId =
+  queryMatch && /^[A-Za-z0-9_-]{12}$/.test(queryMatch)
+    ? queryMatch
+    : externalMatch?.[1] || null;
+
+if (!shareId && !legacyMatch) {
+  return false;
+}
     try {
       const payload=externalMatch
         ? await fetchExternalShare(decodeURIComponent(externalMatch[1]))
