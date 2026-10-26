@@ -611,7 +611,7 @@
   const response = await fetch(`${base}/api/share`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ payload })
   });
 
   const body = await response.text();
