@@ -718,10 +718,18 @@ async function showExternalShareLink(title, payload, help) {
     const payload={kind:"sync-preview",version:1,name:s.name||"名称未設定",rank:s.rank||"0",affiliation:s.affiliation||"",assignedBy:s.assignedBy||"",hp:s.hp||"",san:s.san||"",speed:s.speed||"",bullets:s.bullets||"",slashResistance:s.slashResistance||"",pierceResistance:s.pierceResistance||"",bluntResistance:s.bluntResistance||"",passive1Name:s.passive1Name||s.passive1||"",passive1Condition:s.passive1Condition||"",passive1ConstantEffect:s.showPassive1Constant?(s.passive1ConstantEffect||""):"",passive1Effect:s.passive1Effect||"",showPassive2:!!s.showPassive2,passive2Name:s.passive2Name||s.passive2||"",passive2Condition:s.passive2Condition||"",passive2ConstantEffect:s.showPassive2Constant?(s.passive2ConstantEffect||""):"",passive2Effect:s.passive2Effect||"",tactics:(s.tactics||[]).map(t=>({name:t.name||"",effect:t.effect||"",parentId:t.parentId||"",id:t.id||""})),uniques:s.uniques||[],note:s.note||""};
     await showExternalShareLink("同期人格の共有リンク", payload, "同期人格の性能情報を含みます。リンクを受け取った人は閲覧できます。");
   }
-  async function renderPreviewIfNeeded() {
-    const externalMatch=location.hash.match(/(?:^#|&)s=([A-Za-z0-9_-]{12})/);
-    const legacyMatch=location.hash.match(/(?:^#|&)preview=([^&]+)/);
-    if(!externalMatch && !legacyMatch) return false;
+async function renderPreviewIfNeeded() {
+  const queryShare = new URLSearchParams(location.search).get("share");
+  const queryMatch = queryShare && /^[A-Za-z0-9_-]{12}$/.test(queryShare)
+    ? queryShare
+    : null;
+
+  const externalMatch = location.hash.match(/(?:^#|&)s=([A-Za-z0-9_-]{12})/);
+  const legacyMatch = location.hash.match(/(?:^#|&)preview=([^&]+)/);
+
+  const shareId = externalMatch?.[1] || queryMatch;
+
+  if (!shareId && !legacyMatch) return false;
     try {
       const payload=externalMatch
         ? await fetchExternalShare(decodeURIComponent(externalMatch[1]))
