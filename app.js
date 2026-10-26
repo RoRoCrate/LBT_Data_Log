@@ -644,7 +644,7 @@
       const url = new URL(window.location.href);
       url.hash = `s=${encodeURIComponent(id)}`;
       openForm(title, [
-        {name:"shareUrl",label:"共有リンク（24時間有効）",value:url.toString(),required:true,help:`${help} 有効期限は生成から24時間です。`}
+        {name:"shareUrl",label:"共有リンク",value:url.toString(),required:true,help:`${help}  `}
       ], v => copyText(v.shareUrl));
       setTimeout(() => { const input=$("#f_shareUrl"); if(input){input.readOnly=true;input.addEventListener("focus",()=>input.select());} }, 0);
     } catch (e) {
