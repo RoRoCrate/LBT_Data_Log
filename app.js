@@ -727,12 +727,33 @@ async function showExternalShareLink(title, payload, help) {
         ? await fetchExternalShare(decodeURIComponent(externalMatch[1]))
         : await decodeShareCode(decodeURIComponent(legacyMatch[1]));
       if(payload.version!==1 || !["analysis-preview","sync-preview"].includes(payload.kind)) throw new Error("共有データの形式が正しくありません。");
-      if(payload.kind==="sync-preview") {
-        const showPassive=(n)=>{const name=payload[`passive${n}Name`],condition=payload[`passive${n}Condition`],constant=payload[`passive${n}ConstantEffect`],effect=payload[`passive${n}Effect`];if(n===2&&!payload.showPassive2)return "";if(![name,condition,constant,effect].some(x=>String(x||"").trim()))return "";return `<section class="subpanel"><h3>サポートパッシブ${n}：${escapeHTML(name||"名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(condition||"—").replace(/\n/g,"<br>")}</p>${constant?`<p><strong>常時効果：</strong>${escapeHTML(constant).replace(/\n/g,"<br>")}</p>`:""}<p><strong>効果：</strong>${escapeHTML(effect||"—").replace(/\n/g,"<br>")}</p></section>`;};
-        const roots=(payload.tactics||[]).filter(t=>!t.parentId), branches=(payload.tactics||[]).filter(t=>t.parentId);
-        const tacticHTML=[...roots,...branches].filter(t=>t.name||t.effect).map(t=>`<section class="subpanel"><h4>${escapeHTML(t.name||"戦術")}</h4><p>${escapeHTML(t.effect||"").replace(/\n/g,"<br>")}</p></section>`).join("");
-        document.body.innerHTML=`<main class="preview-page"><div class="preview-brand"><p class="eyebrow">SYNCHRONIZED IDENTITY · SHARED PREVIEW</p><h1>${escapeHTML(payload.name || "共有プレビュー")}</h1><p class="muted">閲覧専用の共有ページです。</p></div><article class="panel"><p class="eyebrow">SYNCHRONIZED IDENTITY</p><h2>${escapeHTML(payload.name)}</h2><p><strong>RANK：</strong>${escapeHTML(payload.rank||"0")}　<strong>所属：</strong>${escapeHTML(payload.affiliation||"—")}　<strong>同期担当者：</strong>${escapeHTML(payload.assignedBy||"—")}</p><div class="statline"><span class="pill">HP ${escapeHTML(payload.hp||"—")}</span><span class="pill">SAN ${escapeHTML(payload.san||"—")}</span><span class="pill">速度 ${escapeHTML(payload.speed||"—")}</span>${String(payload.bullets||"").trim()?`<span class="pill">弾丸 ${escapeHTML(payload.bullets)}</span>`:""}</div><p><strong>耐性：</strong>斬撃 ${escapeHTML(payload.slashResistance||"—")} ／ 貫通 ${escapeHTML(payload.pierceResistance||"—")} ／ 打撃 ${escapeHTML(payload.bluntResistance||"—")}</p><h3>サポートパッシブ</h3>${showPassive(1)}${showPassive(2)}<h3>戦術</h3>${tacticHTML||"<p>戦術の記録はありません。</p>"}${(payload.uniques||[]).some(x=>x.name||x.effect)?`<h3>固有</h3>${payload.uniques.map(x=>`<section class="subpanel"><strong>${escapeHTML(x.name||"固有")}</strong><p>${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p></section>`).join("")}`:""}${payload.note?`<h3>メモ</h3><p>${escapeHTML(payload.note).replace(/\n/g,"<br>")}</p>`:""}<div class="notice" style="margin-top:22px">このページは共有された性能情報のプレビューです。元のキャラクターデータを変更することはできません。</div></article><p class="footer-note">LOCAL ARCHIVE SYSTEM · SHARED PREVIEW</p></main>`;
-      } else {
+      
+if (payload.kind === "sync-preview") {
+  document.title = `${payload.name || "共有プレビュー"} | LBT Data Log`;
+
+  const showPassive = (n) => {
+    const name = payload[`passive${n}Name`],
+      condition = payload[`passive${n}Condition`],
+      constant = payload[`passive${n}ConstantEffect`],
+      effect = payload[`passive${n}Effect`];
+
+    if (n === 2 && !payload.showPassive2) return "";
+    if (![name, condition, constant, effect].some(x => String(x || "").trim())) return "";
+
+    return `<section class="subpanel"><h3>サポートパッシブ${n}：${escapeHTML(name || "名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(condition || "—").replace(/\n/g, "<br>")}</p>${constant ? `<p><strong>常時効果：</strong>${escapeHTML(constant).replace(/\n/g, "<br>")}</p>` : ""}<p><strong>効果：</strong>${escapeHTML(effect || "—").replace(/\n/g, "<br>")}</p></section>`;
+  };
+
+  const roots = (payload.tactics || []).filter(t => !t.parentId);
+  const branches = (payload.tactics || []).filter(t => t.parentId);
+
+  const tacticHTML = [...roots, ...branches]
+    .filter(t => t.name || t.effect)
+    .map(t => `<section class="subpanel"><h4>${escapeHTML(t.name || "戦術")}</h4><p>${escapeHTML(t.effect || "").replace(/\n/g, "<br>")}</p></section>`)
+    .join("");
+
+  document.body.innerHTML = `<main class="preview-page"><div class="preview-brand"><p class="eyebrow">SYNCHRONIZED IDENTITY · SHARED PREVIEW</p><h1>${escapeHTML(payload.name || "共有プレビュー")}</h1><p class="muted">閲覧専用の共有ページです。</p></div><article class="panel"><p class="eyebrow">SYNCHRONIZED IDENTITY</p><h2>${escapeHTML(payload.name)}</h2><p><strong>RANK：</strong>${escapeHTML(payload.rank || "0")}　<strong>所属：</strong>${escapeHTML(payload.affiliation || "—")}　<strong>同期担当者：</strong>${escapeHTML(payload.assignedBy || "—")}</p><div class="statline"><span class="pill">HP ${escapeHTML(payload.hp || "—")}</span><span class="pill">SAN ${escapeHTML(payload.san || "—")}</span><span class="pill">速度 ${escapeHTML(payload.speed || "—")}</span>${String(payload.bullets || "").trim() ? `<span class="pill">弾丸 ${escapeHTML(payload.bullets)}</span>` : ""}</div><p><strong>耐性：</strong>斬撃 ${escapeHTML(payload.slashResistance || "—")} ／ 貫通 ${escapeHTML(payload.pierceResistance || "—")} ／ 打撃 ${escapeHTML(payload.bluntResistance || "—")}</p><h3>j人格パッシブ</h3>${showPassive(1)}${showPassive(2)}<h3>戦術</h3>${tacticHTML || "<p>戦術の記録はありません。</p>"}${(payload.uniques || []).some(x => x.name || x.effect) ? `<h3>固有</h3>${payload.uniques.map(x => `<section class="subpanel"><strong>${escapeHTML(x.name || "固有")}</strong><p>${escapeHTML(x.effect || "").replace(/\n/g, "<br>")}</p></section>`).join("")}` : ""}${payload.note ? `<h3>メモ</h3><p>${escapeHTML(payload.note).replace(/\n/g, "<br>")}</p>` : ""}<div class="notice" style="margin-top:22px">このページは共有された性能情報のプレビューです。元のキャラクターデータを変更することはできません。</div></article><p class="footer-note">LOCAL ARCHIVE SYSTEM · SHARED PREVIEW</p></main>`;
+}
+else {
         document.body.innerHTML=`<main class="preview-page"><div class="preview-brand"><p class="eyebrow">SYNCHRONIZATION ANALYSIS · SHARED PREVIEW</p><h1>${escapeHTML(payload.name || "共有プレビュー")}</h1><p class="muted">閲覧専用の共有ページです。</p></div><article class="panel"><p class="eyebrow">ANALYSIS RECORD</p><h2>${escapeHTML(payload.name)}</h2><p><strong>ランク：</strong>${escapeHTML(payload.rank||"ZAYIN")}　<strong>担当者：</strong>${escapeHTML(payload.assignedBy||"—")}</p><h3>E.G.Oパッシブ：${escapeHTML(payload.passiveName||"名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(payload.condition||"—")}</p>${payload.constantEffect?`<p><strong>常時効果：</strong>${escapeHTML(payload.constantEffect).replace(/\n/g,"<br>")}</p>`:""}<p><strong>効果：</strong>${escapeHTML(payload.effect||"—").replace(/\n/g,"<br>")}</p>${payload.awakeningEffect?`<p><strong>覚醒効果</strong><br>${escapeHTML(payload.awakeningEffect).replace(/\n/g,"<br>")}</p>`:""}${payload.corrosionEffect?`<p><strong>浸食効果</strong><br>${escapeHTML(payload.corrosionEffect).replace(/\n/g,"<br>")}</p>`:""}${(payload.uniques||[]).some(x=>x.name||x.effect)?`<h3>固有</h3>${payload.uniques.map(x=>`<p><strong>${escapeHTML(x.name||"固有")}</strong><br>${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p>`).join("")}`:payload.unique?`<p><strong>固有</strong><br>${escapeHTML(payload.unique).replace(/\n/g,"<br>")}</p>`:""}${payload.note?`<p><strong>メモ：</strong>${escapeHTML(payload.note).replace(/\n/g,"<br>")}</p>`:""}<div class="notice" style="margin-top:22px">このページは共有された性能情報のプレビューです。元のキャラクターデータを変更することはできません。</div></article><p class="footer-note">LOCAL ARCHIVE SYSTEM · SHARED PREVIEW</p></main>`;
       }
       return true;
