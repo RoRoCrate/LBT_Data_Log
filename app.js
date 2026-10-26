@@ -606,17 +606,30 @@
     return SHARE_API_BASE.replace(/\/$/, "");
   }
   async function createExternalShare(payload) {
-    const base = getShareApiBase();
-    const response = await fetch(`${base}/api/share`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const result = await response.json().catch(() => ({}));
-    console.log("共有APIレスポンス:", response.status, result);
-    if (!response.ok || !result.id) throw new Error(result.error || "共有データを保存できませんでした。");
-    return result.id;
+  const base = getShareApiBase();
+
+  const response = await fetch(`${base}/api/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const body = await response.text();
+  console.log("共有API:", response.status, body);
+
+  let result = {};
+  try {
+    result = JSON.parse(body);
+  } catch {}
+
+  if (!response.ok || !result.id) {
+    throw new Error(
+      `共有APIエラー (${response.status}): ${body}`
+    );
   }
+
+  return result.id;
+}
   async function fetchExternalShare(id) {
     const base = getShareApiBase();
     const response = await fetch(`${base}/api/share/${encodeURIComponent(id)}`);
