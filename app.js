@@ -424,15 +424,15 @@
       {name:"showPassive2Constant",label:"常時効果を表示",type:"select",value:String(!!s.showPassive2Constant),group:"sync-passives",groupType:"columns",column:"right",options:[{value:"false",label:"非表示"},{value:"true",label:"表示"}]},
       {name:"passive2ConstantEffect",label:"常時効果",type:"textarea",value:s.passive2ConstantEffect||"",group:"sync-passives",groupType:"columns",column:"right"},
       {name:"passive2Effect",label:"効果",type:"textarea",value:s.passive2Effect||"",group:"sync-passives",groupType:"columns",column:"right"},
-      {name:"tactic0Name",label:"戦術0：名称",value:rootTactics[0]?.name||"戦術0",group:"sync-tactics",groupType:"columns",column:"left"},
+      {name:"tactic0Name",label:"戦術0：名称",value:rootTactics[0]?.name||"戦術0：",group:"sync-tactics",groupType:"columns",column:"left"},
       {name:"tactic0Effect",label:"効果記入欄",type:"textarea",value:rootTactics[0]?.effect||"",group:"sync-tactics",groupType:"columns",column:"left"},
-      {name:"tactic2Name",label:"戦術2：名称",value:rootTactics[2]?.name||"戦術2",group:"sync-tactics",groupType:"columns",column:"left"},
+      {name:"tactic2Name",label:"戦術2：名称",value:rootTactics[2]?.name||"戦術2：",group:"sync-tactics",groupType:"columns",column:"left"},
       {name:"tactic2Effect",label:"効果記入欄",type:"textarea",value:rootTactics[2]?.effect||"",group:"sync-tactics",groupType:"columns",column:"left"},
-      {name:"tactic4Name",label:"戦術4：名称",value:rootTactics[4]?.name||"戦術4",group:"sync-tactics",groupType:"columns",column:"left"},
+      {name:"tactic4Name",label:"戦術4：名称",value:rootTactics[4]?.name||"戦術4：",group:"sync-tactics",groupType:"columns",column:"left"},
       {name:"tactic4Effect",label:"効果記入欄",type:"textarea",value:rootTactics[4]?.effect||"",group:"sync-tactics",groupType:"columns",column:"left"},
-      {name:"tactic1Name",label:"戦術1：名称",value:rootTactics[1]?.name||"戦術1",group:"sync-tactics",groupType:"columns",column:"right"},
+      {name:"tactic1Name",label:"戦術1：名称",value:rootTactics[1]?.name||"戦術1：",group:"sync-tactics",groupType:"columns",column:"right"},
       {name:"tactic1Effect",label:"効果記入欄",type:"textarea",value:rootTactics[1]?.effect||"",group:"sync-tactics",groupType:"columns",column:"right"},
-      {name:"tactic3Name",label:"戦術3：名称",value:rootTactics[3]?.name||"戦術3",group:"sync-tactics",groupType:"columns",column:"right"},
+      {name:"tactic3Name",label:"戦術3：名称",value:rootTactics[3]?.name||"戦術3：",group:"sync-tactics",groupType:"columns",column:"right"},
       {name:"tactic3Effect",label:"効果記入欄",type:"textarea",value:rootTactics[3]?.effect||"",group:"sync-tactics",groupType:"columns",column:"right"},
       {name:"ct",label:"現在CT（0なら使用可能）",type:"number",value:s.ct??0,min:0},{name:"uses",label:"累計使用回数",type:"number",value:s.uses??0,min:0}
     ];
@@ -991,4 +991,20 @@ async function renderPreviewIfNeeded() {
 
   renderPreviewIfNeeded().then(isPreview=>{if(!isPreview) renderAll();}).catch(e=>{document.body.innerHTML=`<main class="preview-page"><h1>共有リンクを読み込めません</h1><p>${escapeHTML(e.message)}</p></main>`;});
 
+  // Enterキーによる意図しないフォーム送信を防止
+document.addEventListener("keydown", function (event) {
+  if (event.key !== "Enter") return;
+
+  const target = event.target;
+
+  // 複数行入力欄ではEnterによる改行を許可
+  if (target.tagName === "TEXTAREA") return;
+
+  // フォーム内のEnterによる自動送信を防止
+  const form = target.closest("form");
+  if (!form) return;
+
+  // 明示的な保存ボタンのクリックは妨げない
+  event.preventDefault();
+});
 })();
