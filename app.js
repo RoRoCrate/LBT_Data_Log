@@ -3,7 +3,7 @@
 
   const STORAGE_KEY = "trpgRecordArchive_v1";
   // Cloudflare Worker URL. Replace this placeholder after deploying share-worker/.
-  const SHARE_API_BASE = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev";
+  const SHARE_API_BASE = "https://lbt-record-share.roro-crate.workers.dev";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`);
