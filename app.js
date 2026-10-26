@@ -728,7 +728,26 @@ async function showExternalShareLink(title, payload, help) {
         : await decodeShareCode(decodeURIComponent(legacyMatch[1]));
       if(payload.version!==1 || !["analysis-preview","sync-preview"].includes(payload.kind)) throw new Error("共有データの形式が正しくありません。");
       
-  document.title = `${payload.name || "共有プレビュー"} | LBT Data Log`;
+
+const shareTitle = `共有：${payload.name || "名称未設定"} || LBT記録管理室`;
+
+document.title = shareTitle;
+
+document.querySelector('meta[property="og:title"]')
+  ?.setAttribute("content", shareTitle);
+
+document.querySelector('meta[name="twitter:title"]')
+  ?.setAttribute("content", shareTitle);
+
+document.querySelector('meta[name="description"]')
+  ?.setAttribute("content", shareTitle);
+
+document.querySelector('meta[property="og:description"]')
+  ?.setAttribute("content", shareTitle);
+
+document.querySelector('meta[name="twitter:description"]')
+  ?.setAttribute("content", shareTitle);
+
 
 if (payload.kind === "sync-preview") {
 
