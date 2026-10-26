@@ -685,6 +685,8 @@ async function showExternalShareLink(title, payload, help) {
     // 新規作成・更新後のIDと編集用トークンを保存
     localStorage.setItem(storageKey, JSON.stringify(result));
 
+    const shareUrl = `${getShareApiBase()}/share/${result.id}`;
+
     const url = new URL(window.location.href);
     url.hash = `s=${encodeURIComponent(result.id)}`;
 
@@ -692,7 +694,7 @@ async function showExternalShareLink(title, payload, help) {
       {
         name: "shareUrl",
         label: "共有リンク",
-        value: url.toString(),
+        value: shareUrl,
         required: true,
         help: `${help} 同じブラウザから次回更新できます。`
       }
