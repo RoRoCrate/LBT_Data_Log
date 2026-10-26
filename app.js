@@ -2,6 +2,8 @@
   "use strict";
 
   const STORAGE_KEY = "trpgRecordArchive_v1";
+  // Cloudflare Worker URL. Replace this placeholder after deploying share-worker/.
+  const SHARE_API_BASE = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev";
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`);
@@ -50,7 +52,7 @@
       s.resistances ||= ""; s.slashResistance ??= ""; s.pierceResistance ??= ""; s.bluntResistance ??= "";
       s.passive1 ||= ""; s.passive2 ||= ""; s.passive1Name ??= s.passive1; s.passive1Condition ||= ""; s.passive1ConstantEffect ||= ""; s.passive1Effect ||= "";
       s.passive2Name ??= s.passive2; s.passive2Condition ||= ""; s.passive2ConstantEffect ||= ""; s.passive2Effect ||= "";
-      s.showPassive1Constant ??= !!s.passive1ConstantEffect; s.showPassive2Constant ??= !!s.passive2ConstantEffect; s.hp ??= ""; s.san ??= ""; s.speed ||= "";
+      s.showPassive1Constant ??= !!s.passive1ConstantEffect; s.showPassive2Constant ??= !!s.passive2ConstantEffect; s.hp ??= ""; s.san ??= ""; s.speed ||= ""; s.bullets ??= "";
       s.tactics ||= [];
       let roots=s.tactics.filter(t => !(t.parentId || "")).length;
       while(roots<5){s.tactics.push({id:uid(),name:`戦術${roots}`,parentId:"",effect:""});roots++;}
@@ -182,13 +184,13 @@
         const passive=(n)=>`<section class="subpanel passive-panel"><h4>サポートパッシブ${n}</h4><p class="small"><strong>名称：</strong>${escapeHTML(s[`passive${n}Name`]||s[`passive${n}`]||"—")}</p><p class="small"><strong>条件：</strong>${escapeHTML(s[`passive${n}Condition`]||"—")}</p>${s[`showPassive${n}Constant`]&&s[`passive${n}ConstantEffect`]?`<p class="small"><strong>常時効果：</strong>${escapeHTML(s[`passive${n}ConstantEffect`]).replace(/\n/g,"<br>")}</p>`:""}<p class="small"><strong>効果：</strong>${escapeHTML(s[`passive${n}Effect`]||"—").replace(/\n/g,"<br>")}</p></section>`;
         return `<details class="record-card record-accordion ${ready?"max-ready":""}" data-record-id="${escapeHTML(s.id)}"><summary class="record-summary"><div class="card-top"><div><p class="eyebrow">SYNCHRONIZED IDENTITY · ${escapeHTML(s.rank)}${isMax?" · MAX":""}</p><h3>${escapeHTML(s.name||"名称未設定")}</h3></div><span class="pill ${ct===0?"green":"red"}">${ct===0?"使用可能":`CT ${ct}`}</span></div></summary><div class="accordion-body">
           <p class="small"><strong>所属：</strong>${escapeHTML(s.affiliation||"—")}　<strong>同期担当者：</strong>${escapeHTML(s.assignedBy||"—")}</p>
-          <div class="statline"><span class="pill">HP ${escapeHTML(s.hp||"—")}</span><span class="pill">SAN ${escapeHTML(s.san||"—")}</span><span class="pill">速度 ${escapeHTML(s.speed||"—")}</span><span class="pill">累計使用：${s.uses||0} / 3</span></div>
+          <div class="statline"><span class="pill">HP ${escapeHTML(s.hp||"—")}</span><span class="pill">SAN ${escapeHTML(s.san||"—")}</span><span class="pill">速度 ${escapeHTML(s.speed||"—")}</span>${String(s.bullets||"").trim()?`<span class="pill">弾丸 ${escapeHTML(s.bullets)}</span>`:""}<span class="pill">累計使用：${s.uses||0} / 3</span></div>
           <p class="small"><strong>耐性：</strong>斬撃 ${escapeHTML(s.slashResistance||"—")} ／ 貫通 ${escapeHTML(s.pierceResistance||"—")} ／ 打撃 ${escapeHTML(s.bluntResistance||"—")}</p>
           <div class="passive-grid">${passive(1)}${s.showPassive2?passive(2):""}</div>
           <div class="progress"><span style="width:${Math.min(100,number(s.uses)/3*100)}%"></span></div>${ready?`<div class="max-banner">★ MAX作成条件達成 ★</div>`:""}
           <hr class="rule"><h4>戦術</h4>${renderTactics(s,tactics)}
           ${(s.uniques||[]).some(x=>x.name||x.effect)?`<hr class="rule"><h4>固有</h4>${(s.uniques||[]).map((x,i)=>(x.name||x.effect)?`<section class="subpanel"><div class="card-top"><strong>${escapeHTML(x.name||`固有 ${i+1}`)}</strong><div class="action-row"><button class="button button-small" data-action="edit-sync-unique" data-id="${s.id}" data-unique-index="${i}">編集</button><button class="button button-small" data-action="delete-sync-unique" data-id="${s.id}" data-unique-index="${i}">削除</button></div></div><p class="small">${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p></section>`:"").join("")}`:""}
-          <div class="action-row"><button class="button button-primary button-small" data-action="use-sync" data-id="${s.id}" ${ct>0?"disabled":""}>同期を使用</button><button class="button button-small" data-action="sync-scenario-pass">シナリオ通過</button><button class="button button-small" data-action="add-unique" data-id="${s.id}">＋ 固有追加</button><button class="button button-small" data-action="toggle-passive2" data-id="${s.id}">${s.showPassive2?"サポートパッシブ2を削除":"サポートパッシブ2を追加"}</button><button class="button button-small" data-action="edit-sync" data-id="${s.id}">編集</button>${ready&&!isMax?`<button class="button button-primary button-small" data-action="create-max-sync" data-id="${s.id}">MAXを作成</button>`:""}<button class="button button-small" data-action="delete-sync" data-id="${s.id}">削除</button></div>
+          <div class="action-row"><button class="button button-primary button-small" data-action="use-sync" data-id="${s.id}" ${ct>0?"disabled":""}>同期を使用</button><button class="button button-small" data-action="sync-scenario-pass">シナリオ通過</button><button class="button button-small" data-action="add-unique" data-id="${s.id}">＋ 固有追加</button><button class="button button-small" data-action="toggle-passive2" data-id="${s.id}">${s.showPassive2?"サポートパッシブ2を削除":"サポートパッシブ2を追加"}</button><button class="button button-small" data-action="edit-sync" data-id="${s.id}">編集</button>${ready&&!isMax?`<button class="button button-primary button-small" data-action="create-max-sync" data-id="${s.id}">MAXを作成</button>`:""}<button class="button button-small" data-action="share-sync" data-id="${s.id}">共有リンク</button><button class="button button-small" data-action="delete-sync" data-id="${s.id}">削除</button></div>
         </div></details>`;
       }).join("")}</div>`:emptyState("同期人格が登録されていません","指定の基本情報・パッシブ・戦術・固有を登録できます。",`<button class="button button-primary" data-action="add-sync">同期人格を登録</button>`)} `;
   }
@@ -207,7 +209,7 @@
     return `${sectionHead("解析E.G.O一覧","項目を開くと詳細が表示されます。持ち込み3回＋使用1回でMAX作成条件達成。",`<button class="button button-primary" data-action="add-analysis">＋ 解析E.G.Oを登録</button>`)}
       <div class="notice">持ち込み3回と使用1回の両方を満たすとMAX作成条件達成です。共有リンクは解析E.G.Oの記録内容をプレビューします。</div><div style="height:14px"></div>
       ${c.analyses.length?`<div class="card-list">${c.analyses.map(a=>{const ready=analysisMaxReady(a), isMax=!!a.isMax;return `<details class="record-card record-accordion ${ready?"max-ready":""}" data-record-id="${escapeHTML(a.id)}"><summary class="record-summary"><div class="card-top"><div><p class="eyebrow">ANALYSIS E.G.O · ${escapeHTML(a.rank||"ZAYIN")}${isMax?" · MAX":""}</p><h3>${escapeHTML(a.name||"名称未設定")}</h3></div><span class="pill ${ready?"gold":""}">${isMax?"MAXデータ":ready?"MAX作成条件達成":"条件未達"}</span></div></summary><div class="accordion-body">
-        <p class="small"><strong>ランク：</strong>${escapeHTML(a.rank||"ZAYIN")}　<strong>担当者：</strong>${escapeHTML(a.assignedBy||"—")}</p>
+        <p class="small"><strong>ランク：</strong>${escapeHTML(a.rank||"ZAYIN")}　<strong>担当者：</strong>${escapeHTML(a.assignedBy||"—")}</p>${a.requiredResources?`<p class="small"><strong>必要資源：</strong>${escapeHTML(a.requiredResources).replace(/\n/g,"<br>")}</p>`:""}
         <div class="subpanel"><h4>E.G.Oパッシブ</h4><p class="small"><strong>名称：</strong>${escapeHTML(a.passiveName||"—")}</p><p class="small"><strong>発動条件：</strong>${escapeHTML(a.condition||"—").replace(/\n/g,"<br>")}</p>${a.showConstantEffect&&a.constantEffect?`<p class="small"><strong>常時効果：</strong>${escapeHTML(a.constantEffect).replace(/\n/g,"<br>")}</p>`:""}<p class="small"><strong>効果：</strong>${escapeHTML(a.effect||"—").replace(/\n/g,"<br>")}</p></div>
         <div class="analysis-effects-grid"><section class="subpanel"><h4>覚醒</h4><p class="small">${escapeHTML(a.awakeningEffect||"未記入").replace(/\n/g,"<br>")}</p></section><section class="subpanel"><h4>浸食</h4><p class="small">${escapeHTML(a.corrosionEffect||"未記入").replace(/\n/g,"<br>")}</p></section></div>
         ${(a.uniques||[]).some(x=>x.name||x.effect)?`<h4>固有</h4>${a.uniques.map((x,i)=>(x.name||x.effect)?`<section class="subpanel"><div class="card-top"><strong>${escapeHTML(x.name||`固有 ${i+1}`)}</strong><div class="action-row"><button class="button button-small" data-action="edit-analysis-unique" data-id="${a.id}" data-unique-index="${i}">編集</button><button class="button button-small" data-action="delete-analysis-unique" data-id="${a.id}" data-unique-index="${i}">削除</button></div></div><p class="small">${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p></section>`:"").join("")}`:""}
@@ -224,11 +226,15 @@
     const sortControl = key === "egos"
       ? `<label class="sort-control">並び順<select data-sort="egos"><option value="rank" ${sortOptions.egos==="rank"?"selected":""}>ランク順</option><option value="added" ${sortOptions.egos==="added"?"selected":""}>追加順</option></select></label>`
       : key === "identities"
-      ? `<label class="sort-control">並び順<select data-sort="identities"><option value="added" ${sortOptions.identities==="added"?"selected":""}>追加順</option><option value="category" ${sortOptions.identities==="category"?"selected":""}>通常・特異・同期</option></select></label>`
+      ? `<label class="sort-control">並び順<select data-sort="identities"><option value="added" ${sortOptions.identities==="added"?"selected":""}>追加順</option><option value="通常" ${sortOptions.identities==="通常"?"selected":""}>通常順</option><option value="特異" ${sortOptions.identities==="特異"?"selected":""}>特異順</option><option value="同期" ${sortOptions.identities==="同期"?"selected":""}>同期順</option></select></label>`
       : key === "passives"
       ? `<label class="sort-control">並び順<select data-sort="passives"><option value="added" ${sortOptions.passives==="added"?"selected":""}>追加順</option><option value="normal" ${sortOptions.passives==="normal"?"selected":""}>通常</option><option value="death" ${sortOptions.passives==="death"?"selected":""}>死亡時</option></select></label>` : "";
     if (key === "egos" && sortOptions.egos === "rank") list.sort((a,b)=>rankOrder.indexOf(a.rank||"ZAYIN")-rankOrder.indexOf(b.rank||"ZAYIN"));
-    if (key === "identities" && sortOptions.identities === "category") { const order={"通常":0,"特異":1,"同期":2}; list.sort((a,b)=>(order[a.category]??99)-(order[b.category]??99)); }
+    if (key === "identities" && ["通常","特異","同期"].includes(sortOptions.identities)) {
+      const preferred = sortOptions.identities;
+      const order = [preferred, ...["通常","特異","同期"].filter(x => x !== preferred)];
+      list.sort((a,b) => order.indexOf(a.category || "通常") - order.indexOf(b.category || "通常"));
+    }
     if (key === "passives" && ["normal","death"].includes(sortOptions.passives)) { const first = sortOptions.passives === "normal" ? "通常" : "死亡時"; list.sort((a,b)=>(a.category===first?0:1)-(b.category===first?0:1)); }
     const heading = key === "identities" ? "分類・名称・身体強化のみを管理します。" : key === "egos" ? "E.G.O名とランクを管理します。" : "「通常」「死亡時」の分類で管理します。";
     return `${sectionHead(`${label}一覧`,heading,`<div class="section-tools">${sortControl}<button class="button button-primary" data-action="add-collection" data-key="${key}">＋ ${label}を追加</button></div>`)}
@@ -312,6 +318,7 @@
       case "use-analysis": { const a=findById(c.analyses,data.id); if(a){a.uses=number(a.uses)+1;a.useHistory ||= [];a.useHistory.push({date:today()});save();toast("使用回数を加算しました");} break; }
       case "create-max-analysis": { const a=findById(c.analyses,data.id); if(a && analysisMaxReady(a) && !a.isMax){ const copy=structuredClone(a); copy.id=uid(); copy.sourceId=a.id; copy.isMax=true; c.analyses.push(copy); save(); toast("元データをコピーしてMAX解析E.G.Oを作成しました"); } break; }
       case "share-analysis": { const a=findById(c.analyses,data.id); if(a) generateShareLink(a); break; }
+      case "share-sync": { const s=findById(c.syncs,data.id); if(s) generateSyncShareLink(s); break; }
       case "delete-analysis": confirmAction("同期解析を削除しますか？","持ち込み・使用履歴と性能記録を削除します。",()=>{c.analyses=c.analyses.filter(x=>x.id!==data.id);save();}); break;
       case "add-collection": openCollectionForm(data.key); break;
       case "add-body-enhancement": { const item=findById(c.identities,data.id); if(item) openForm("身体強化を追加",[{name:"enhancement",label:"身体強化",type:"textarea"}],v=>{item.bodyEnhancements ||= [];if((v.enhancement||"").trim())item.bodyEnhancements.push(v.enhancement);save();toast("身体強化を追加しました");}); break; }
@@ -404,7 +411,7 @@
       {name:"affiliation",label:"所属",value:s.affiliation||"",group:"sync-meta"},
       {name:"rank",label:"RANK",type:"select",value:s.rank||"0",group:"sync-meta",options:["0","00","000","MAX-0","MAX-00","MAX-000"].map(x=>({value:x,label:x}))},
       {name:"assignedBy",label:"同期担当者",value:s.assignedBy||""},
-      {name:"hp",label:"HP",value:s.hp||"",group:"sync-stats"},{name:"san",label:"SAN",value:s.san||"",group:"sync-stats"},{name:"speed",label:"速度",value:s.speed||"",group:"sync-stats"},
+      {name:"hp",label:"HP",value:s.hp||"",group:"sync-stats"},{name:"san",label:"SAN",value:s.san||"",group:"sync-stats"},{name:"speed",label:"速度",value:s.speed||"",group:"sync-stats"},{name:"bullets",label:"弾丸",value:s.bullets||"",group:"sync-stats"},
       {name:"slashResistance",label:"耐性・斬撃",value:s.slashResistance||"",group:"sync-resist"},{name:"pierceResistance",label:"耐性・貫通",value:s.pierceResistance||"",group:"sync-resist"},{name:"bluntResistance",label:"耐性・打撃",value:s.bluntResistance||"",group:"sync-resist"},
       {name:"passive1Name",label:"サポートパッシブ1・名称",value:s.passive1Name||s.passive1||"",group:"sync-passives",groupType:"columns",column:"left"},
       {name:"passive1Condition",label:"条件",type:"textarea",value:s.passive1Condition||"",group:"sync-passives",groupType:"columns",column:"left"},
@@ -461,6 +468,7 @@
       {name:"name",label:"E.G.O名称",value:a.name||""},
       {name:"rank",label:"ランク",type:"select",value:a.rank||"ZAYIN",options:["ZAYIN","TETH","HE","WAW","ALEPH"].map(x=>({value:x,label:x}))},
       {name:"assignedBy",label:"担当者",value:a.assignedBy||""},
+      {name:"requiredResources",label:"必要資源",type:"textarea",value:a.requiredResources||""},
       {name:"passiveName",label:"E.G.Oパッシブ名",value:a.passiveName||""},
       {name:"condition",label:"発動条件",type:"textarea",value:a.condition||""},
       {name:"showConstantEffect",label:"常時効果を表示",type:"select",value:String(!!a.showConstantEffect),options:[{value:"false",label:"非表示"},{value:"true",label:"表示"}]},
@@ -511,6 +519,50 @@
     for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
     return (h>>>0).toString(16).padStart(8,"0");
   }
+  async function compressToBase64Url(str) {
+    if(typeof CompressionStream==="undefined") throw new Error("このブラウザは共有リンクの圧縮に対応していません。最新のChromeまたはEdgeを使用してください。");
+    const stream=new Blob([new TextEncoder().encode(str)]).stream().pipeThrough(new CompressionStream("deflate"));
+    const bytes=new Uint8Array(await new Response(stream).arrayBuffer());
+    let binary="";
+    for(let i=0;i<bytes.length;i+=0x8000) binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+    return btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  async function decompressFromBase64Url(str) {
+    if(typeof DecompressionStream==="undefined") throw new Error("このブラウザは圧縮された共有リンクの展開に対応していません。最新のChromeまたはEdgeを使用してください。");
+    const base=str.replace(/-/g,"+").replace(/_/g,"/");
+    const padded=base+"=".repeat((4-base.length%4)%4);
+    const binary=atob(padded), bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
+    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+    return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+  }
+  // Compact key names reduce the input size before deflate. Decoded payloads
+  // are expanded back to the ordinary field names used by the preview renderer.
+  const SHARE_KEY_MAP={kind:"a",version:"b",name:"c",rank:"d",assignedBy:"e",requiredResources:"f",note:"g",uniques:"h",passiveName:"i",condition:"j",constantEffect:"k",effect:"l",corrosionEffect:"m",awakeningEffect:"n",unique:"o",affiliation:"p",hp:"q",san:"r",speed:"s",bullets:"t",slashResistance:"u",pierceResistance:"v",bluntResistance:"w",passive1Name:"x",passive1Condition:"y",passive1ConstantEffect:"z",passive1Effect:"A",showPassive2:"B",passive2Name:"C",passive2Condition:"D",passive2ConstantEffect:"E",passive2Effect:"F",tactics:"G",parentId:"H",id:"I",showPassive1Constant:"J",showPassive2Constant:"K",name2:"L",constantEffect2:"M",bodyEnhancements:"N",text:"O",title:"P",category:"Q",value:"R",label:"S",type:"T",children:"U",status:"V",description:"W",icon:"X",image:"Y"};
+  const SHARE_KEY_REVERSE=Object.fromEntries(Object.entries(SHARE_KEY_MAP).map(([k,v])=>[v,k]));
+  function transformShareKeys(value, mapping) {
+    if(Array.isArray(value)) return value.map(item=>transformShareKeys(item,mapping));
+    if(value && typeof value==="object") { const out={}; for(const [key,val] of Object.entries(value)) out[mapping[key]||key]=transformShareKeys(val,mapping); return out; }
+    return value;
+  }
+  async function makeCompressedShareCode(payload) {
+    const compact=JSON.stringify(transformShareKeys(payload,SHARE_KEY_MAP));
+    // 6 hex chars retain a practical corruption check while reducing URL overhead.
+    return `V3.${checksum(compact).slice(0,6)}.${await compressToBase64Url(compact)}`;
+  }
+  async function decodeShareCode(code) {
+    const parts=String(code).trim().split(".");
+    if(parts.length!==3) throw new Error("コード形式が正しくありません。");
+    if(parts[0]==="TRPGVIEW1") return decodeCode(code,"TRPGVIEW1");
+    if(parts[0]==="TRPGVIEW2") {
+      const body=await decompressFromBase64Url(parts[2]);
+      if(checksum(body)!==parts[1]) throw new Error("共有データの検査に失敗しました。リンクが欠けている可能性があります。");
+      return JSON.parse(body);
+    }
+    if(parts[0]!=="V3") throw new Error("コード形式が正しくありません。");
+    const compact=await decompressFromBase64Url(parts[2]);
+    if(checksum(compact).slice(0,6)!==parts[1]) throw new Error("共有データの検査に失敗しました。リンクが欠けている可能性があります。");
+    return transformShareKeys(JSON.parse(compact),SHARE_KEY_REVERSE);
+  }
   function makeCode(payload, prefix="TRPG1") {
     const body=JSON.stringify(payload);
     return `${prefix}.${checksum(body)}.${utf8ToBase64Url(body)}`;
@@ -547,24 +599,69 @@
       save();toast("データを復元しました");
     } catch(e) { alert(`復元できませんでした。\n${e.message}`); }
   }
-  function generateShareLink(a) {
-    const payload={kind:"analysis-preview",version:1,name:a.name,rank:a.rank||"ZAYIN",assignedBy:a.assignedBy||"",note:a.note||"",uniques:a.uniques||[],passiveName:a.passiveName||"",condition:a.condition||"",constantEffect:a.showConstantEffect?(a.constantEffect||""):"",effect:a.effect||"",corrosionEffect:a.corrosionEffect||"",awakeningEffect:a.awakeningEffect||"",unique:a.unique||""};
-    const code=makeCode(payload,"TRPGVIEW1");
-    const url=new URL(window.location.href);
-    url.hash=`preview=${encodeURIComponent(code)}`;
-    openForm("同期解析の共有リンク",[
-      {name:"shareUrl",label:"共有リンク（コピーしてPLに送信）",value:url.toString(),required:true,help:"解析E.G.Oの記録内容を含みます。リンクを受け取った人は閲覧できます。"}
-    ],v=>copyText(v.shareUrl));
-    // Make the URL field easier to copy even if the user closes without submitting.
-    setTimeout(()=>{const input=$("#f_shareUrl");if(input){input.readOnly=true;input.addEventListener("focus",()=>input.select());}},0);
+  function getShareApiBase() {
+    if (!SHARE_API_BASE || SHARE_API_BASE.includes("YOUR-WORKER-NAME")) {
+      throw new Error("共有リンク機能の設定が未完了です。READMEのCloudflare Workers設定手順に従い、app.jsのSHARE_API_BASEを設定してください。");
+    }
+    return SHARE_API_BASE.replace(/\/$/, "");
   }
-  function renderPreviewIfNeeded() {
-    const match=location.hash.match(/(?:^#|&)preview=([^&]+)/);
-    if(!match) return false;
+  async function createExternalShare(payload) {
+    const base = getShareApiBase();
+    const response = await fetch(`${base}/api/share`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.id) throw new Error(result.error || "共有データを保存できませんでした。");
+    return result.id;
+  }
+  async function fetchExternalShare(id) {
+    const base = getShareApiBase();
+    const response = await fetch(`${base}/api/share/${encodeURIComponent(id)}`);
+    const result = await response.json().catch(() => ({}));
+    if (response.status === 404) throw new Error("共有データの有効期限が切れたか、存在しません。");
+    if (!response.ok || !result.payload) throw new Error(result.error || "共有データを取得できませんでした。");
+    return result.payload;
+  }
+  async function showExternalShareLink(title, payload, help) {
     try {
-      const payload=decodeCode(decodeURIComponent(match[1]),"TRPGVIEW1");
-      if(payload.kind!=="analysis-preview" || payload.version!==1) throw new Error("共有データの形式が正しくありません。");
-      document.body.innerHTML=`<main class="preview-page"><div class="preview-brand"><p class="eyebrow">SYNCHRONIZATION ANALYSIS · SHARED PREVIEW</p><h1>同期解析プレビュー</h1><p class="muted">閲覧専用の共有ページです。</p></div><article class="panel"><p class="eyebrow">ANALYSIS RECORD</p><h2>${escapeHTML(payload.name)}</h2><p><strong>ランク：</strong>${escapeHTML(payload.rank||"ZAYIN")}　<strong>担当者：</strong>${escapeHTML(payload.assignedBy||"—")}</p><h3>E.G.Oパッシブ：${escapeHTML(payload.passiveName||"名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(payload.condition||"—")}</p>${payload.constantEffect?`<p><strong>常時効果：</strong>${escapeHTML(payload.constantEffect).replace(/\n/g,"<br>")}</p>`:""}<p><strong>効果：</strong>${escapeHTML(payload.effect||"—").replace(/\n/g,"<br>")}</p>${payload.corrosionEffect?`<p><strong>浸食効果</strong><br>${escapeHTML(payload.corrosionEffect).replace(/\n/g,"<br>")}</p>`:""}${payload.awakeningEffect?`<p><strong>覚醒効果</strong><br>${escapeHTML(payload.awakeningEffect).replace(/\n/g,"<br>")}</p>`:""}${(payload.uniques||[]).some(x=>x.name||x.effect)?`<h3>固有</h3>${payload.uniques.map(x=>`<p><strong>${escapeHTML(x.name||"固有")}</strong><br>${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p>`).join("")}`:payload.unique?`<p><strong>固有</strong><br>${escapeHTML(payload.unique).replace(/\n/g,"<br>")}</p>`:""}${payload.note?`<p><strong>メモ：</strong>${escapeHTML(payload.note).replace(/\n/g,"<br>")}</p>`:""}<div class="notice" style="margin-top:22px">このページは共有された性能情報のプレビューです。元のキャラクターデータを変更することはできません。</div></article><p class="footer-note">LOCAL ARCHIVE SYSTEM · SHARED PREVIEW</p></main>`;
+      const id = await createExternalShare(payload);
+      const url = new URL(window.location.href);
+      url.hash = `s=${encodeURIComponent(id)}`;
+      openForm(title, [
+        {name:"shareUrl",label:"共有リンク（24時間有効）",value:url.toString(),required:true,help:`${help} 有効期限は生成から24時間です。`}
+      ], v => copyText(v.shareUrl));
+      setTimeout(() => { const input=$("#f_shareUrl"); if(input){input.readOnly=true;input.addEventListener("focus",()=>input.select());} }, 0);
+    } catch (e) {
+      alert(`共有リンクを作成できませんでした。\n${e.message}`);
+    }
+  }
+  async function generateShareLink(a) {
+    const payload={kind:"analysis-preview",version:1,name:a.name,rank:a.rank||"ZAYIN",assignedBy:a.assignedBy||"",requiredResources:a.requiredResources||"",note:a.note||"",uniques:a.uniques||[],passiveName:a.passiveName||"",condition:a.condition||"",constantEffect:a.showConstantEffect?(a.constantEffect||""):"",effect:a.effect||"",corrosionEffect:a.corrosionEffect||"",awakeningEffect:a.awakeningEffect||"",unique:a.unique||""};
+    await showExternalShareLink("解析E.G.Oの共有リンク", payload, "解析E.G.Oの記録内容を含みます。リンクを受け取った人は閲覧できます。");
+  }
+  async function generateSyncShareLink(s) {
+    const payload={kind:"sync-preview",version:1,name:s.name||"名称未設定",rank:s.rank||"0",affiliation:s.affiliation||"",assignedBy:s.assignedBy||"",hp:s.hp||"",san:s.san||"",speed:s.speed||"",bullets:s.bullets||"",slashResistance:s.slashResistance||"",pierceResistance:s.pierceResistance||"",bluntResistance:s.bluntResistance||"",passive1Name:s.passive1Name||s.passive1||"",passive1Condition:s.passive1Condition||"",passive1ConstantEffect:s.showPassive1Constant?(s.passive1ConstantEffect||""):"",passive1Effect:s.passive1Effect||"",showPassive2:!!s.showPassive2,passive2Name:s.passive2Name||s.passive2||"",passive2Condition:s.passive2Condition||"",passive2ConstantEffect:s.showPassive2Constant?(s.passive2ConstantEffect||""):"",passive2Effect:s.passive2Effect||"",tactics:(s.tactics||[]).map(t=>({name:t.name||"",effect:t.effect||"",parentId:t.parentId||"",id:t.id||""})),uniques:s.uniques||[],note:s.note||""};
+    await showExternalShareLink("同期人格の共有リンク", payload, "同期人格の性能情報を含みます。リンクを受け取った人は閲覧できます。");
+  }
+  async function renderPreviewIfNeeded() {
+    const externalMatch=location.hash.match(/(?:^#|&)s=([A-Za-z0-9_-]{12})/);
+    const legacyMatch=location.hash.match(/(?:^#|&)preview=([^&]+)/);
+    if(!externalMatch && !legacyMatch) return false;
+    try {
+      const payload=externalMatch
+        ? await fetchExternalShare(decodeURIComponent(externalMatch[1]))
+        : await decodeShareCode(decodeURIComponent(legacyMatch[1]));
+      if(payload.version!==1 || !["analysis-preview","sync-preview"].includes(payload.kind)) throw new Error("共有データの形式が正しくありません。");
+      if(payload.kind==="sync-preview") {
+        const showPassive=(n)=>{const name=payload[`passive${n}Name`],condition=payload[`passive${n}Condition`],constant=payload[`passive${n}ConstantEffect`],effect=payload[`passive${n}Effect`];if(n===2&&!payload.showPassive2)return "";if(![name,condition,constant,effect].some(x=>String(x||"").trim()))return "";return `<section class="subpanel"><h3>サポートパッシブ${n}：${escapeHTML(name||"名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(condition||"—").replace(/\n/g,"<br>")}</p>${constant?`<p><strong>常時効果：</strong>${escapeHTML(constant).replace(/\n/g,"<br>")}</p>`:""}<p><strong>効果：</strong>${escapeHTML(effect||"—").replace(/\n/g,"<br>")}</p></section>`;};
+        const roots=(payload.tactics||[]).filter(t=>!t.parentId), branches=(payload.tactics||[]).filter(t=>t.parentId);
+        const tacticHTML=[...roots,...branches].filter(t=>t.name||t.effect).map(t=>`<section class="subpanel"><h4>${escapeHTML(t.name||"戦術")}</h4><p>${escapeHTML(t.effect||"").replace(/\n/g,"<br>")}</p></section>`).join("");
+        document.body.innerHTML=`<main class="preview-page"><div class="preview-brand"><p class="eyebrow">SYNCHRONIZED IDENTITY · SHARED PREVIEW</p><h1>同期人格プレビュー</h1><p class="muted">閲覧専用の共有ページです。</p></div><article class="panel"><p class="eyebrow">SYNCHRONIZED IDENTITY</p><h2>${escapeHTML(payload.name)}</h2><p><strong>RANK：</strong>${escapeHTML(payload.rank||"0")}　<strong>所属：</strong>${escapeHTML(payload.affiliation||"—")}　<strong>同期担当者：</strong>${escapeHTML(payload.assignedBy||"—")}</p><div class="statline"><span class="pill">HP ${escapeHTML(payload.hp||"—")}</span><span class="pill">SAN ${escapeHTML(payload.san||"—")}</span><span class="pill">速度 ${escapeHTML(payload.speed||"—")}</span>${String(payload.bullets||"").trim()?`<span class="pill">弾丸 ${escapeHTML(payload.bullets)}</span>`:""}</div><p><strong>耐性：</strong>斬撃 ${escapeHTML(payload.slashResistance||"—")} ／ 貫通 ${escapeHTML(payload.pierceResistance||"—")} ／ 打撃 ${escapeHTML(payload.bluntResistance||"—")}</p><h3>サポートパッシブ</h3>${showPassive(1)}${showPassive(2)}<h3>戦術</h3>${tacticHTML||"<p>戦術の記録はありません。</p>"}${(payload.uniques||[]).some(x=>x.name||x.effect)?`<h3>固有</h3>${payload.uniques.map(x=>`<section class="subpanel"><strong>${escapeHTML(x.name||"固有")}</strong><p>${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p></section>`).join("")}`:""}${payload.note?`<h3>メモ</h3><p>${escapeHTML(payload.note).replace(/\n/g,"<br>")}</p>`:""}<div class="notice" style="margin-top:22px">このページは共有された性能情報のプレビューです。元のキャラクターデータを変更することはできません。</div></article><p class="footer-note">LOCAL ARCHIVE SYSTEM · SHARED PREVIEW</p></main>`;
+      } else {
+        document.body.innerHTML=`<main class="preview-page"><div class="preview-brand"><p class="eyebrow">SYNCHRONIZATION ANALYSIS · SHARED PREVIEW</p><h1>同期解析プレビュー</h1><p class="muted">閲覧専用の共有ページです。</p></div><article class="panel"><p class="eyebrow">ANALYSIS RECORD</p><h2>${escapeHTML(payload.name)}</h2><p><strong>ランク：</strong>${escapeHTML(payload.rank||"ZAYIN")}　<strong>担当者：</strong>${escapeHTML(payload.assignedBy||"—")}</p><h3>E.G.Oパッシブ：${escapeHTML(payload.passiveName||"名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(payload.condition||"—")}</p>${payload.constantEffect?`<p><strong>常時効果：</strong>${escapeHTML(payload.constantEffect).replace(/\n/g,"<br>")}</p>`:""}<p><strong>効果：</strong>${escapeHTML(payload.effect||"—").replace(/\n/g,"<br>")}</p>${payload.awakeningEffect?`<p><strong>覚醒効果</strong><br>${escapeHTML(payload.awakeningEffect).replace(/\n/g,"<br>")}</p>`:""}${payload.corrosionEffect?`<p><strong>浸食効果</strong><br>${escapeHTML(payload.corrosionEffect).replace(/\n/g,"<br>")}</p>`:""}${(payload.uniques||[]).some(x=>x.name||x.effect)?`<h3>固有</h3>${payload.uniques.map(x=>`<p><strong>${escapeHTML(x.name||"固有")}</strong><br>${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p>`).join("")}`:payload.unique?`<p><strong>固有</strong><br>${escapeHTML(payload.unique).replace(/\n/g,"<br>")}</p>`:""}${payload.note?`<p><strong>メモ：</strong>${escapeHTML(payload.note).replace(/\n/g,"<br>")}</p>`:""}<div class="notice" style="margin-top:22px">このページは共有された性能情報のプレビューです。元のキャラクターデータを変更することはできません。</div></article><p class="footer-note">LOCAL ARCHIVE SYSTEM · SHARED PREVIEW</p></main>`;
+      }
       return true;
     } catch(e) {
       document.body.innerHTML=`<main class="preview-page"><h1>共有リンクを読み込めません</h1><p>${escapeHTML(e.message)}</p><p>リンクが途中で切れていないか確認してください。</p></main>`;
@@ -593,5 +690,5 @@
   $("#addCharacterBtn").addEventListener("click",()=>openForm("キャラクターを追加",[{name:"name",label:"キャラクター名",required:true}],v=>{const c=emptyCharacter((v.name||"").trim() || "名称未設定");state.characters.push(c);state.activeCharacterId=c.id;save();toast("キャラクターを追加しました");}));
   $$(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.view)));
 
-  if (!renderPreviewIfNeeded()) renderAll();
+  renderPreviewIfNeeded().then(isPreview=>{if(!isPreview) renderAll();}).catch(e=>{document.body.innerHTML=`<main class="preview-page"><h1>共有リンクを読み込めません</h1><p>${escapeHTML(e.message)}</p></main>`;});
 })();
