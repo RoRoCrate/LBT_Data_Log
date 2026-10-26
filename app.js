@@ -728,8 +728,9 @@ async function showExternalShareLink(title, payload, help) {
         : await decodeShareCode(decodeURIComponent(legacyMatch[1]));
       if(payload.version!==1 || !["analysis-preview","sync-preview"].includes(payload.kind)) throw new Error("共有データの形式が正しくありません。");
       
-if (payload.kind === "sync-preview") {
   document.title = `${payload.name || "共有プレビュー"} | LBT Data Log`;
+
+if (payload.kind === "sync-preview") {
 
   const showPassive = (n) => {
     const name = payload[`passive${n}Name`],
@@ -740,7 +741,7 @@ if (payload.kind === "sync-preview") {
     if (n === 2 && !payload.showPassive2) return "";
     if (![name, condition, constant, effect].some(x => String(x || "").trim())) return "";
 
-    return `<section class="subpanel"><h3>サポートパッシブ${n}：${escapeHTML(name || "名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(condition || "—").replace(/\n/g, "<br>")}</p>${constant ? `<p><strong>常時効果：</strong>${escapeHTML(constant).replace(/\n/g, "<br>")}</p>` : ""}<p><strong>効果：</strong>${escapeHTML(effect || "—").replace(/\n/g, "<br>")}</p></section>`;
+    return `<section class="subpanel"><h3>人格パッシブ${n}：${escapeHTML(name || "名称未登録")}</h3><p><strong>条件：</strong>${escapeHTML(condition || "—").replace(/\n/g, "<br>")}</p>${constant ? `<p><strong>常時効果：</strong>${escapeHTML(constant).replace(/\n/g, "<br>")}</p>` : ""}<p><strong>効果：</strong>${escapeHTML(effect || "—").replace(/\n/g, "<br>")}</p></section>`;
   };
 
   const roots = (payload.tactics || []).filter(t => !t.parentId);
