@@ -138,7 +138,7 @@
           <p class="eyebrow">MAX CONDITIONS</p><h3>MAX条件の達成状況</h3>
           <div class="statline"><span class="pill ${readySyncs.length ? "gold" : ""}">同期：${readySyncs.length}件</span><span class="pill ${readyAnalyses.length ? "gold" : ""}">解析：${readyAnalyses.length}件</span></div>
           <p class="muted small">同期は累計3回使用、同期解析は持ち込み3回＋使用1回で条件達成。</p>
-          <div class="action-row"><button class="button button-quiet" data-goto="sync">同期を確認 →</button><button class="button button-quiet" data-goto="analysis">同期解析を確認 →</button></div>
+          <div class="action-row"><button class="button button-quiet" data-goto="sync">同期を確認 →</button><button class="button button-quiet" data-goto="analysis">解析を確認 →</button></div>
         </section>
       </div>
       ${sectionHead("最近のシナリオ記録","直近の通過履歴",`<button class="button button-small" data-goto="scenarios">すべて表示 →</button>`)}
