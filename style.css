@@ -196,6 +196,106 @@ dialog h3 { margin: 6px 0 20px; font-size: 20px; }
   .sort-control select { flex: 1; max-width: 220px; }
 }
 
+/* ========================================
+   スマートフォン向けレスポンシブレイアウト
+   画面幅768px以下で適用
+======================================== */
+
+@media screen and (max-width: 768px) {
+
+  /* ページ全体 */
+  body {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* メインコンテンツ */
+  .container,
+  .content,
+  .main-content {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* ヘッダー */
+  .site-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* 横並びのレイアウトを縦並びに */
+  .two-column,
+  .passive-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* カード類 */
+  .detail-card,
+  .skill-box,
+  .unique-section {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* 長い名前・文章による横はみ出し防止 */
+  h1,
+  h2,
+  h3,
+  p,
+  .detail-title {
+    overflow-wrap: anywhere;
+  }
+
+  /* 入力欄・ボタン */
+  input,
+  select,
+  textarea,
+  button {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* 表が画面からはみ出さないようにする */
+  table {
+    max-width: 100%;
+  }
+
+  /* 画像 */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* 小型スマートフォン向け */
+@media screen and (max-width: 480px) {
+
+  .container,
+  .content,
+  .main-content {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  h2 {
+    font-size: 1.15rem;
+  }
+
+  button {
+    min-height: 40px;
+  }
+}
+
 
 /* Custom ナナメのR brand image */
 .brand-mark { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: 0; color: inherit; font-size: 0; transform: none; overflow: hidden; }
