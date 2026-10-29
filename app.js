@@ -461,7 +461,7 @@ case "create-max-sync": {
   function openSyncForm(existing) {
     const s=existing||{};
     const initialTactics=[...(s.tactics||[])];
-    while(initialTactics.filter(t=>!(t.parentId||"")).length<5){const n=initialTactics.filter(t=>!(t.parentId||"")).length;initialTactics.push({id:uid(),name:`戦術${n}`,parentId:"",effect:""});}
+    while(initialTactics.filter(t=>!(t.parentId||"")).length<5){const n=initialTactics.filter(t=>!(t.parentId||"")).length;initialTactics.push({id:uid(),name:`戦術${n}：`,parentId:"",effect:""});}
     const rootTactics=initialTactics.filter(t=>!(t.parentId||""));
     const fields=[
       {name:"name",label:"同期人格名",value:s.name||""},
