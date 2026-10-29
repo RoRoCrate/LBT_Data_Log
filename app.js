@@ -321,7 +321,29 @@
       case "toggle-passive2": { const s=findById(c.syncs,data.id); if(s){s.showPassive2=!s.showPassive2;save();toast(s.showPassive2?"人格パッシブ2を追加しました":"人格パッシブ2を非表示にしました");} break; }
       case "use-sync": { const s=findById(c.syncs,data.id); if(s && s.ct===0){s.ct=rankCT(s.rank);s.uses=number(s.uses)+1;s.lastUsed=today();save();toast("同期を使用しました。CTを設定しました");} break; }
       case "sync-scenario-pass": confirmAction("シナリオ通過を記録しますか？","CTが1以上の同期をすべて1減少させます。",()=>{c.syncs.forEach(s=>{if(number(s.ct)>0)s.ct--;}); c.scenarioLogs.push({id:uid(),name:"シナリオ通過（CT更新）",date:today(),lp:0,fragment:0,items:"",note:"同期CTを1減少"});save();toast("同期CTを更新しました");}); break;
-      case "create-max-sync": { const s=findById(c.syncs,data.id); if(s && syncMaxReady(s) && !String(s.rank||"").startsWith("MAX-")){ const copy=structuredClone(s); copy.id=uid(); copy.sourceId=s.id; copy.isMax=true; copy.rank=`MAX-${String(s.rank||"0").replace(/^MAX-/,"")}`; c.syncs.push(copy); save(); toast("元データをコピーしてMAX同期人格を作成しました"); } break; }
+      
+case "create-max-sync": {
+  const s = findById(c.syncs, data.id);
+
+  if (s && syncMaxReady(s) && !String(s.rank || "").startsWith("MAX-")) {
+    const copy = structuredClone(s);
+
+    copy.id = uid();
+    copy.sourceId = s.id;
+    copy.isMax = true;
+    copy.rank = `MAX-${String(s.rank || "0").replace(/^MAX-/, "")}`;
+
+    // コピー元の直下にMAX同期人格を挿入する
+    const sourceIndex = c.syncs.findIndex(x => x.id === s.id);
+    c.syncs.splice(sourceIndex + 1, 0, copy);
+
+    save();
+    toast("元データの直下にMAX同期人格を作成しました");
+  }
+
+  break;
+}
+
       case "add-tactic": openTacticForm(findById(c.syncs,data.id), null, false); break;
       case "branch-tactic": openTacticForm(findById(c.syncs,data.id), null, true, data.tacticId||""); break;
       case "edit-tactic": { const s=findById(c.syncs,data.id), t=s?.tactics?.find(x=>x.id===data.tacticId); if(s&&t) openTacticForm(s,t,false); break; }
