@@ -14,7 +14,7 @@
     id: uid(), name, createdAt: new Date().toISOString(),
     resources: { lp: 0, fragment: 0 },
     items: [], syncs: [], analyses: [], identities: [], passives: [], egos: [], spirits: [],
-    scenarioLogs: [], adjustments: []
+    characterMemo: { name: "", settings: [], notes: [] }, scenarioLogs: [], adjustments: []
   });
   const defaultState = () => {
     const character = emptyCharacter("新しいキャラクター");
@@ -44,6 +44,11 @@
   }
   function normalizeCharacter(c) {
     c.id ||= uid(); c.name ||= "名称未設定";
+    c.characterMemo ||= { name: "", settings: [], notes: [] };
+    c.characterMemo.name ??= "";
+    if (!Array.isArray(c.characterMemo.settings)) c.characterMemo.settings = [];
+    if (!Array.isArray(c.characterMemo.notes)) c.characterMemo.notes = [];
+    [...c.characterMemo.settings, ...c.characterMemo.notes].forEach(x => { x.id ||= uid(); x.title ||= ""; x.body ||= ""; });
     c.resources ||= { lp: 0, fragment: 0 };
     c.resources.lp = Number(c.resources.lp) || 0; c.resources.fragment = Number(c.resources.fragment) || 0;
     ["items","syncs","analyses","identities","passives","egos","spirits","scenarioLogs","adjustments"].forEach(k => { if (!Array.isArray(c[k])) c[k] = []; });
@@ -95,7 +100,7 @@
     assets: ["RESOURCES & ITEMS","資産・アイテム"], sync: ["SYNCHRONIZED IDENTITY","同期人格"],
     analysis: ["ANALYSIS E.G.O","解析E.G.O"], identities: ["IDENTITY ARCHIVE","人格"],
     passives: ["SUPPORT PASSIVES","サポートパッシブ"], egos: ["E.G.O RANKS","E.G.O"],
-    spirits: ["SPIRIT RECORDS","精神"], data: ["TRANSFER / BACKUP","データ管理"]
+    spirits: ["SPIRIT RECORDS","精神"], characterMemo: ["CHARACTER NOTES","キャラクター設定"], data: ["TRANSFER / BACKUP","データ管理"]
   };
 
   function renderAll() {
@@ -107,7 +112,7 @@
     $$(".nav-item[data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === activeView));
     const [eyebrow, title] = titles[activeView] || titles.overview;
     $("#viewEyebrow").textContent = eyebrow; $("#viewTitle").textContent = title;
-    const renderers = { overview: renderOverview, scenarios: renderScenarios, assets: renderAssets, sync: renderSync, analysis: renderAnalyses, identities: () => renderSimpleCollection("identities","人格"), passives: () => renderSimpleCollection("passives","サポートパッシブ"), egos: () => renderSimpleCollection("egos","E.G.O"), spirits: renderSpirits, data: renderData };
+    const renderers = { overview: renderOverview, scenarios: renderScenarios, assets: renderAssets, sync: renderSync, analysis: renderAnalyses, identities: () => renderSimpleCollection("identities","人格"), passives: () => renderSimpleCollection("passives","サポートパッシブ"), egos: () => renderSimpleCollection("egos","E.G.O"), spirits: renderSpirits, characterMemo: renderCharacterMemo, data: renderData };
     $("#viewContent").innerHTML = (renderers[activeView] || renderOverview)();
     bindViewActions();
   }
@@ -175,9 +180,12 @@
     ${c.items.length ? `<div class="table-wrap"><table><thead><tr><th>アイテム名</th><th>個数</th><th>説明</th><th>入手元</th><th>操作</th></tr></thead><tbody>${c.items.map(i => `<tr><td>${escapeHTML(i.name)}</td><td>${i.count}</td><td>${escapeHTML(i.description || "—")}</td><td>${escapeHTML(i.source || "—")}</td><td><div class="action-row"><button class="button button-small" data-action="use-item" data-id="${i.id}">1個使用</button><button class="button button-small" data-action="edit-item" data-id="${i.id}">編集</button><button class="button button-small" data-action="delete-item" data-id="${i.id}">削除</button></div></td></tr>`).join("")}</tbody></table></div>` : emptyState("アイテムはありません","アイテムを追加するとここに表示されます。")}`;
   }
 
+  let syncDisplayMode = "edit";
   function renderSync() {
     const c = active();
-    return `${sectionHead("同期人格一覧","項目を開くと詳細が表示されます。CT・使用回数・戦術分岐・固有を管理します。",`<button class="button button-primary" data-action="add-sync">＋ 同期人格を登録</button>`)}
+    const previewMode = syncDisplayMode === "preview";
+    const modeButtons = `<div class="action-row"><button class="button ${previewMode ? "" : "button-primary"}" data-action="set-sync-view" data-mode="edit">編集画面</button><button class="button ${previewMode ? "button-primary" : ""}" data-action="set-sync-view" data-mode="preview">プレビュー画面</button>${previewMode ? "" : `<button class="button button-primary" data-action="add-sync">＋ 同期人格を登録</button>`}</div>`;
+    return `${sectionHead("同期人格一覧",previewMode ? "閲覧用プレビューです。" : "項目を開くと詳細が表示されます。CT・使用回数・戦術分岐・固有を管理します。",modeButtons)}
       <div class="notice">ランク0 / 00 / 000の初期CTはそれぞれ1 / 2 / 3。CTが0になると再使用できます。累計3回使用でMAX作成条件達成。</div><div style="height:14px"></div>
       ${c.syncs.length ? `<div class="card-list">${c.syncs.map(s => {
         const ready=syncMaxReady(s), ct=number(s.ct), tactics=s.tactics||[], isMax=!!s.isMax || String(s.rank||"").startsWith("MAX-");
@@ -189,8 +197,8 @@
           <div class="passive-grid">${passive(1)}${s.showPassive2?passive(2):""}</div>
           <div class="progress"><span style="width:${Math.min(100,number(s.uses)/3*100)}%"></span></div>${ready?`<div class="max-banner">★ MAX作成条件達成 ★</div>`:""}
           <hr class="rule"><h4>戦術</h4>${renderTactics(s,tactics)}
-          ${(s.uniques||[]).some(x=>x.name||x.effect)?`<hr class="rule"><h4>固有</h4>${(s.uniques||[]).map((x,i)=>(x.name||x.effect)?`<section class="subpanel"><div class="card-top"><strong>${escapeHTML(x.name||`固有 ${i+1}`)}</strong><div class="action-row"><button class="button button-small" data-action="edit-sync-unique" data-id="${s.id}" data-unique-index="${i}">編集</button><button class="button button-small" data-action="delete-sync-unique" data-id="${s.id}" data-unique-index="${i}">削除</button></div></div><p class="small">${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p></section>`:"").join("")}`:""}
-          <div class="action-row"><button class="button button-primary button-small" data-action="use-sync" data-id="${s.id}" ${ct>0?"disabled":""}>同期を使用</button><button class="button button-small" data-action="sync-scenario-pass">シナリオ通過</button><button class="button button-small" data-action="add-unique" data-id="${s.id}">＋ 固有追加</button><button class="button button-small" data-action="toggle-passive2" data-id="${s.id}">${s.showPassive2?"人格パッシブ2を削除":"人格パッシブ2を追加"}</button><button class="button button-small" data-action="edit-sync" data-id="${s.id}">編集</button>${ready&&!isMax?`<button class="button button-primary button-small" data-action="create-max-sync" data-id="${s.id}">MAXを作成</button>`:""}<button class="button button-small" data-action="share-sync" data-id="${s.id}">共有リンク</button><button class="button button-small" data-action="delete-sync" data-id="${s.id}">削除</button></div>
+          ${(s.uniques||[]).some(x=>x.name||x.effect)?`<hr class="rule"><h4>固有</h4>${(s.uniques||[]).map((x,i)=>(x.name||x.effect)?`<section class="subpanel"><div class="card-top"><strong>${escapeHTML(x.name||`固有 ${i+1}`)}</strong>${previewMode ? "" : `<div class="action-row"><button class="button button-small" data-action="edit-sync-unique" data-id="${s.id}" data-unique-index="${i}">編集</button><button class="button button-small" data-action="delete-sync-unique" data-id="${s.id}" data-unique-index="${i}">削除</button></div>`}</div><p class="small">${escapeHTML(x.effect||"").replace(/\n/g,"<br>")}</p></section>`:"").join("")}`:""}
+          <div class="action-row"><button class="button button-primary button-small" data-action="use-sync" data-id="${s.id}" ${ct>0?"disabled":""}>同期を使用</button>${previewMode ? `<button class="button button-small" data-action="share-sync" data-id="${s.id}">共有リンク</button>` : `<button class="button button-small" data-action="add-unique" data-id="${s.id}">＋ 固有追加</button><button class="button button-small" data-action="toggle-passive2" data-id="${s.id}">${s.showPassive2?"人格パッシブ2を削除":"人格パッシブ2を追加"}</button><button class="button button-small" data-action="edit-sync" data-id="${s.id}">編集</button>${ready&&!isMax?`<button class="button button-primary button-small" data-action="create-max-sync" data-id="${s.id}">MAXを作成</button>`:""}<button class="button button-small" data-action="share-sync" data-id="${s.id}">共有リンク</button><button class="button button-small" data-action="delete-sync" data-id="${s.id}">削除</button>`}</div>
         </div></details>`;
       }).join("")}</div>`:emptyState("同期人格が登録されていません","指定の基本情報・パッシブ・戦術・固有を登録できます。",`<button class="button button-primary" data-action="add-sync">同期人格を登録</button>`)} `;
   }
@@ -198,10 +206,10 @@
     if(!tactics.length) return `<p class="muted small">戦術は未登録です。</p>`;
     const roots=tactics.filter(t=>!(t.parentId||""));
     const branchesFor=parent=>tactics.filter(t=>(t.parentId||"")===parent.id);
-    const renderTactic=(t, isBranch=false)=>`<div class="tactic-item ${isBranch?"tactic-branch":""}"><div class="card-top"><strong>${escapeHTML(t.name||"戦術")}</strong><div class="action-row">${!isBranch?`<button class="button button-small" data-action="branch-tactic" data-id="${s.id}" data-tactic-id="${t.id}">分岐追加</button>`:""}<button class="button button-small" data-action="edit-tactic" data-id="${s.id}" data-tactic-id="${t.id}">編集</button><button class="button button-small" data-action="delete-tactic" data-id="${s.id}" data-tactic-id="${t.id}">削除</button></div></div><p class="small">${escapeHTML(t.effect||"効果未記入").replace(/\n/g,"<br>")}</p></div>`;
+    const renderTactic=(t, isBranch=false)=>`<div class="tactic-item ${isBranch?"tactic-branch":""}"><div class="card-top"><strong>${escapeHTML(t.name||"戦術")}</strong><div class="action-row">${syncDisplayMode === "preview" ? "" : `${!isBranch?`<button class="button button-small" data-action="branch-tactic" data-id="${s.id}" data-tactic-id="${t.id}">分岐追加</button>`:""}<button class="button button-small" data-action="edit-tactic" data-id="${s.id}" data-tactic-id="${t.id}">編集</button><button class="button button-small" data-action="delete-tactic" data-id="${s.id}" data-tactic-id="${t.id}">削除</button>`}</div></div><p class="small">${escapeHTML(t.effect||"効果未記入").replace(/\n/g,"<br>")}</p></div>`;
     const cards=[];
     roots.forEach(root=>{cards.push(renderTactic(root));branchesFor(root).forEach(branch=>cards.push(renderTactic(branch,true)));});
-    return `<div class="tactics-grid">${cards.join("")}<div class="tactic-add-tile"><button class="button button-small" data-action="add-tactic" data-id="${s.id}">＋ 戦術追加</button></div></div>`;
+    return `<div class="tactics-grid">${cards.join("")}${syncDisplayMode === "preview" ? "" : `<div class="tactic-add-tile"><button class="button button-small" data-action="add-tactic" data-id="${s.id}">＋ 戦術追加</button></div>`}</div>`;
   }
 
   function renderAnalyses() {
@@ -254,6 +262,14 @@
       ${c.spirits.length ? `<div class="card-list">${c.spirits.map(s => `<article class="record-card"><div class="card-top"><h3>${escapeHTML(s.name)}</h3><span class="pill">所持</span></div><div class="action-row"><button class="button button-small" data-action="edit-spirit" data-id="${s.id}">編集</button><button class="button button-small" data-action="delete-spirit" data-id="${s.id}">削除</button></div></article>`).join("")}</div>` : emptyState("精神は登録されていません","所持している精神の名称を登録してください。")}`;
   }
 
+  function renderCharacterMemo() {
+    const memo = active().characterMemo;
+    const renderEntries = (kind, entries, label) => `<section class="panel memo-section"><div class="section-heading"><div><p class="eyebrow">${kind === "settings" ? "CHARACTER PROFILE" : "PERSONAL NOTES"}</p><h3>${label}</h3></div><button class="button button-primary" data-action="add-character-memo-entry" data-kind="${kind}">＋ ${label}を追加</button></div>${entries.length ? `<div class="memo-entry-list">${entries.map((entry,index)=>`<details class="record-card memo-entry" data-record-id="${escapeHTML(entry.id)}"><summary><strong>${escapeHTML(entry.title || `名称未設定 ${index+1}`)}</strong><span class="muted small">クリックして展開</span></summary><div class="memo-entry-body">${entry.body ? `<div class="memo-body">${escapeHTML(entry.body).replace(/\n/g,"<br>")}</div>` : `<p class="muted small">本文は未記入です。</p>`}<div class="action-row"><button class="button button-small" data-action="edit-character-memo-entry" data-kind="${kind}" data-id="${escapeHTML(entry.id)}">編集</button><button class="button button-small" data-action="delete-character-memo-entry" data-kind="${kind}" data-id="${escapeHTML(entry.id)}">削除</button></div></div></details>`).join("")}</div>` : `<p class="muted small">${label}はまだありません。追加ボタンから作成できます。</p>`}</section>`;
+    return `${sectionHead("キャラクターの設定とメモ","管理対象ごとに独立して保存されます。各項目は題名をクリックして展開・折りたたみできます。")}
+      <section class="panel"><div class="field"><label for="characterMemoName">名前</label><input id="characterMemoName" value="${escapeHTML(memo.name)}" placeholder="キャラクター名を入力"></div><div class="action-row"><button class="button button-primary" data-action="save-character-memo-name">名前を保存</button></div></section>
+      ${renderEntries("settings",memo.settings,"設定")}${renderEntries("notes",memo.notes,"メモ")}`;
+  }
+
   function renderData() {
     return `${sectionHead("データ移行・バックアップ","データはこのブラウザのローカルストレージに保存されます。")}
       <div class="grid">
@@ -284,7 +300,12 @@
   function handleAction(action, data = {}) {
     const c = active();
     switch(action) {
+      case "set-sync-view": syncDisplayMode = data.mode === "preview" ? "preview" : "edit"; renderAll(); break;
       case "quick-adjust": openResourceAdjust(); break;
+      case "save-character-memo-name": { c.characterMemo.name = $("#characterMemoName")?.value || ""; save(); toast("名前を保存しました"); break; }
+      case "add-character-memo-entry": openCharacterMemoEntryForm(data.kind); break;
+      case "edit-character-memo-entry": { const list=c.characterMemo[data.kind], entry=findById(list,data.id); if(entry) openCharacterMemoEntryForm(data.kind,entry); break; }
+      case "delete-character-memo-entry": { const list=c.characterMemo[data.kind]; confirmAction("項目を削除しますか？","題名と本文を削除します。",()=>{c.characterMemo[data.kind]=list.filter(x=>x.id!==data.id);save();}); break; }
       case "rename-character": openForm("キャラクター名を変更", [{name:"name",label:"キャラクター名",value:c.name,required:true}], values => { c.name = (values.name||"").trim() || "名称未設定"; save(); toast("キャラクター名を変更しました"); }); break;
       case "add-scenario": openScenarioForm(); break;
       case "edit-scenario": openScenarioForm(findById(c.scenarioLogs,data.id)); break;
@@ -334,6 +355,20 @@
       case "export-json": exportJSON(); break;
       case "reset-data": confirmAction("全データを初期化しますか？","このアプリの保存データを消去し、空の初期状態に戻します。この操作は取り消せません。必要なら先にバックアップしてください。",()=>{try{localStorage.removeItem(STORAGE_KEY);}catch(e){} state=defaultState();activeView="overview";renderAll();try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}catch(e){}toast("全データを初期化しました");}); break;
     }
+  }
+
+  function openCharacterMemoEntryForm(kind, entry = null) {
+    const label = kind === "settings" ? "設定" : "メモ";
+    openForm(entry ? `${label}を編集` : `${label}を追加`, [
+      { name: "title", label: "題名", value: entry?.title || "", required: true },
+      { name: "body", label: "本文", type: "textarea", value: entry?.body || "" }
+    ], values => {
+      const c = active(); c.characterMemo ||= { name: "", settings: [], notes: [] };
+      const list = c.characterMemo[kind] || (c.characterMemo[kind] = []);
+      if (entry) Object.assign(entry, { title: values.title || "", body: values.body || "" });
+      else list.push({ id: uid(), title: values.title || "", body: values.body || "" });
+      save(); toast(`${label}を保存しました`);
+    });
   }
 
   function openForm(title, fields, onSave) {
@@ -412,7 +447,7 @@
       {name:"rank",label:"RANK",type:"select",value:s.rank||"0",group:"sync-meta",options:["0","00","000","MAX-0","MAX-00","MAX-000"].map(x=>({value:x,label:x}))},
       {name:"assignedBy",label:"同期担当者",value:s.assignedBy||""},
       {name:"hp",label:"HP",value:s.hp||"",group:"sync-stats"},{name:"san",label:"SAN",value:s.san||"",group:"sync-stats"},{name:"speed",label:"速度",value:s.speed||"",group:"sync-stats"},{name:"bullets",label:"弾丸",value:s.bullets||"",group:"sync-stats"},
-      {name:"slashResistance",label:"耐性・斬撃",value:s.slashResistance||"",group:"sync-resist"},{name:"pierceResistance",label:"耐性・貫通",value:s.pierceResistance||"",group:"sync-resist"},{name:"bluntResistance",label:"耐性・打撃",value:s.bluntResistance||"",group:"sync-resist"},
+      {name:"slashResistance",label:"耐性・斬撃",type:"select",value:s.slashResistance||"普通",group:"sync-resist",options:["脆弱","弱点","普通","抵抗","耐性","免疫"].map(x=>({value:x,label:x}))},{name:"pierceResistance",label:"耐性・貫通",type:"select",value:s.pierceResistance||"普通",group:"sync-resist",options:["脆弱","弱点","普通","抵抗","耐性","免疫"].map(x=>({value:x,label:x}))},{name:"bluntResistance",label:"耐性・打撃",type:"select",value:s.bluntResistance||"普通",group:"sync-resist",options:["脆弱","弱点","普通","抵抗","耐性","免疫"].map(x=>({value:x,label:x}))},
       {name:"passive1Name",label:"人格パッシブ1・名称",value:s.passive1Name||s.passive1||"",group:"sync-passives",groupType:"columns",column:"left"},
       {name:"passive1Condition",label:"条件",type:"textarea",value:s.passive1Condition||"",group:"sync-passives",groupType:"columns",column:"left"},
       {name:"showPassive1Constant",label:"常時効果を表示",type:"select",value:String(!!s.showPassive1Constant),group:"sync-passives",groupType:"columns",column:"left",options:[{value:"false",label:"非表示"},{value:"true",label:"表示"}]},
