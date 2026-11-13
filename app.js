@@ -273,7 +273,7 @@
   function renderData() {
     return `${sectionHead("データ移行・バックアップ","データはこのブラウザのローカルストレージに保存されます。")}
       <div class="grid">
-        <section class="panel"><p class="eyebrow">PASSWORD OF RETURN</p><h3>復元コードを生成</h3><p class="muted small">選択中のキャラクター、または登録済みの全キャラクターをコード化します。生成したコードを別端末で読み込めます。</p>
+        <section class="panel"><p class="eyebrow">PASSWORD OF RETURN</p><h3>復元コードを生成</h3><p class="muted small">選択中のキャラクター、または登録済みの全キャラクターをコード化します。生成したコードを別端末で読み込めます。<br> <font color="red">現在不具合発生中のため、バックアップ作成の際はJsonファイルでの保存を推奨しています </font></p>
           <div class="field"><label for="exportScope">対象範囲</label><select id="exportScope"><option value="active">選択中のキャラクター1人</option><option value="all">全キャラクター</option></select></div>
           <button class="button button-primary" data-action="generate-code">復元コードを生成</button><div class="field" style="margin-top:13px"><label for="exportCode">生成されたコード</label><textarea id="exportCode" class="code-box" placeholder="ここに復元コードが表示されます"></textarea></div><button class="button" data-action="copy-code">コードをコピー</button>
         </section>
